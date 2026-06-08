@@ -551,7 +551,64 @@ footer {
 
 /* Responsive */
 @media (max-width: 600px) {
-  .tile { width: 40px; height: 56px; }
-  .tile .tile-symbol { font-size: 1.2rem; }
-  h1 { font-size: 1.3rem; }
+  #app { padding: 10px; }
+
+  section { padding: 12px; margin-bottom: 12px; }
+
+  h1 { font-size: 1.2rem; margin-bottom: 8px; }
+  h2 { font-size: 0.95rem; margin-bottom: 8px; }
+
+  /* Onglets pleine largeur */
+  #tab-bar { gap: 0; width: 100%; }
+  .tab-btn { flex: 1; padding: 8px 6px; font-size: 0.85rem; border-radius: 16px 16px 0 0; }
+
+  /* Niveaux */
+  #level-bar { gap: 6px; }
+  .level-btn { padding: 4px 10px; font-size: 0.78rem; }
+
+  /* Tuiles de main : plus petites */
+  .tile { width: 36px; height: 50px; }
+  .tile .tile-symbol { font-size: 1.1rem; }
+  .tile .tile-label { font-size: 0.48rem; }
+  .tile.winning { transform: translateY(-5px); }
+
+  /* Tuiles palette : compactes pour 8 par ligne */
+  .palette-tile { width: 33px; height: 45px; font-size: 1.1rem; }
+  .palette-tile .pal-sub { font-size: 0.42rem; }
+  .palette-label { width: 44px; font-size: 0.68rem; padding-right: 4px; }
+
+  /* Contexte calculateur */
+  .ctx-lbl { width: 100px; font-size: 0.82rem; }
+  .wind-btn { padding: 4px 9px; font-size: 0.8rem; }
+  .win-btn  { padding: 5px 11px; font-size: 0.8rem; }
+  .ctx-checks label { font-size: 0.8rem; }
+
+  /* Slots constructeur de main */
+  .builder-slot { min-width: 80px; padding: 7px; }
+  .slot-tiles .tile { width: 33px; height: 45px; }
+  .slot-tiles .tile .tile-symbol { font-size: 1.1rem; }
+
+  /* Attente */
+  #wait-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  #wait-type { max-width: 100%; width: 100%; }
+
+  /* Boutons calculateur */
+  #calc-buttons { gap: 8px; }
+  #calc-btn, #reset-btn { padding: 9px 18px; font-size: 0.9rem; }
+
+  /* Réponse entraînement */
+  #input-row { gap: 6px; }
+  #answer-input { width: 130px; padding: 8px 10px; font-size: 1rem; }
+  #validate-btn, #new-hand-btn { padding: 8px 14px; font-size: 0.9rem; }
+
+  /* Tableau de détail */
+  #detail-section th, #detail-section td { padding: 5px 8px; font-size: 0.82rem; }
+  #calc-result th, #calc-result td { padding: 5px 8px; font-size: 0.82rem; }
+
+  /* Contexte badges */
+  #context-info { gap: 8px; font-size: 0.82rem; }
+  .ctx-badge { padding: 3px 8px; }
+
+  /* Copier texte */
+  #hand-text, .hand-text-area { font-size: 0.72rem; }
 }
