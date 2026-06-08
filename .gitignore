@@ -1,0 +1,6 @@
+# Captures d'écran de debug
+*.png
+*.jpg
+
+# Système
+.DS_Store

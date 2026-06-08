@@ -1,0 +1,749 @@
+// === CALCUL DES COMBINAISONS MCR ===
+// Chaque fonction reçoit un objet `hand` et retourne une liste de {name, points}
+
+// Structure d'une main :
+// hand = {
+//   groups: [ {type:'chow'|'pung'|'kong', tiles:[...], hidden:bool}, ... ],
+//   pair: { tiles:[t,t], hidden:bool },
+//   flowers: [ ...tiles ],
+//   winTile: tile,
+//   winBy: 'self'|'discard',
+//   windRound: 'E'|'S'|'W'|'N',
+//   windPlayer: 'E'|'S'|'W'|'N',
+//   isLastTile: bool,       // dernière tuile de la muraille
+//   isLastDiscard: bool,    // dernière défausse
+//   isStolenKong: bool,     // kong volé
+//   isAfterKong: bool,      // finir sur kong
+//   isLastExisting: bool,   // 4e exemplaire (dernière existante)
+// }
+
+// ── Références PDF : MCR_Combinaisons.pdf ──────────────────────
+// Clés ordonnées du plus spécifique au plus général (préfixes)
+const COMBO_REFS = {
+  'Double Chow pur':                  5,
+  'Double Chow':                      5,
+  'Petite suite pure':                5,
+  "Deux Chows purs d'extrémité":      5,
+  'Une famille absente':              5,
+  'Sans honneurs':                    5,
+  'Tirer soi-même':                   6,
+  "Pung d'extrémité":                 6,
+  'Pung de Vent':                     6,
+  'Kong exposé':                      7,
+  'Fleur':                            7,
+  'Attente unique au bord':           8,
+  'Attente unique au milieu':         8,
+  'Attente unique sur la paire':      8,
+  'Pung de Dragon':                  10,
+  'Vent du tour':                    10,
+  'Vent du joueur':                  10,
+  'Tout caché donné':                10,
+  'Double Pung':                     10,
+  'Tout Chow':                       11,
+  'Deux Pungs cachés':               11,
+  'Kong caché + Kong exposé':        17,
+  'Kong caché':                      12,
+  '4 identiques':                    12,
+  'Tout ordinaire':                  12,
+  'Extrémité ou honneur partout':    13,
+  'Tout caché tiré':                 14,
+  'Dernière tuile existante':        14,
+  'Deux Kongs exposés':              14,
+  'Tout Pung paire':                 35,
+  'Tout Pung':                       15,
+  'Semi pure':                       15,
+  'Trois Chows purs superposés':     32,
+  'Trois Chows superposés':          16,
+  'Tout exposé':                     16,
+  'Deux Dragons dans trois familles':32,
+  'Deux Dragons dans une famille':   47,
+  'Deux Dragons':                    16,
+  '2 Kongs cachés':                  20,
+  'Tout Type':                       18,
+  'Grande suite pure':               29,
+  'Grande suite':                    19,
+  'Trois Pungs purs consécutifs':    35,
+  'Trois Pungs consécutifs':         19,
+  'Trois Pungs cachés':              30,
+  'Triple Chow pur':                 35,
+  'Triple Chows':                    19,
+  'Triple Pung':                     29,
+  'Dernière tuile tirée':            19,
+  'Dernière tuile jetée':            19,
+  'Kong volé':                       19,
+  'Finir sur le Kong':               20,
+  'Symétrie':                        21,
+  'Main sans valeur':                22,
+  'Suite serpentine':                25,
+  'Petit serpentin':                 26,
+  'Grand serpentin':                 34,
+  'Les quatre premiers':             27,
+  'Les quatre derniers':             27,
+  'Trois grands Vents':              28,
+  'Trois grands Dragons':            51,
+  'Cinq partout':                    31,
+  'Main pure':                       34,
+  'Sept paires pures consécutives':  48,
+  'Sept paires':                     36,
+  'Les trois premiers':              37,
+  'Les trois derniers':              38,
+  'Les trois du milieu':             39,
+  'Tout honneur et extrémité':       40,
+  'Quatre Chows purs superposés':    40,
+  'Trois Kongs':                     41,
+  'Quadruple Chows purs':            42,
+  'Quatre Pungs purs consécutifs':   43,
+  'Quatre Pungs cachés':             44,
+  'Trois petits Dragons':            45,
+  'Quatre petits Vents':             45,
+  'Quatre grands Vents':             51,
+  'Quatre Kongs':                    52,
+  'Tout honneur':                    46,
+  'Tout extrémité':                  46,
+  'Treize orphelins':                48,
+  'Neuf portes':                     49,
+  'Main verte':                      53,
+};
+
+function getComboRef(name) {
+  for (const [key, page] of Object.entries(COMBO_REFS)) {
+    if (name.startsWith(key)) return page;
+  }
+  return null;
+}
+
+function scoreHand(hand) {
+  const results = [];
+
+  function add(name, pts) {
+    if (pts > 0) results.push({ name, pts });
+  }
+
+  // Retour anticipé pour mains spéciales entières
+  if (hand.specialType === '13orphans') {
+    add('Treize orphelins', 88);
+    if (hand.winBy === 'self') add('Tout caché tiré', 4);
+    if (hand.waitType === 'pair')   add('Attente unique sur la paire', 1);
+    if (hand.waitType === 'edge')   add('Attente unique au bord', 1);
+    if (hand.waitType === 'closed') add('Attente unique au milieu', 1);
+    hand.flowers.forEach(() => add('Fleur', 1));
+    return { items: results, total: results.reduce((s,r)=>s+r.pts, 0) };
+  }
+
+  const groups  = hand.groups;
+  const pair    = hand.pair;
+  const allElems = [...groups, pair]; // tous les éléments incl. paire
+  const allTiles = allElems.flatMap(g => g.tiles).concat(hand.flowers);
+
+  // Helpers
+  const isSuited = t => ['bamboo','circle','character'].includes(t.type);
+  const isHonor  = t => t.type === 'wind' || t.type === 'dragon';
+  const isTerminal = t => isSuited(t) && (t.value === 1 || t.value === 9);
+  const isTermOrHonor = t => isTerminal(t) || isHonor(t);
+  const isOrdinary = t => isSuited(t) && t.value >= 2 && t.value <= 8;
+
+  const chows  = groups.filter(g => g.type === 'chow');
+  const pungs  = groups.filter(g => g.type === 'pung' || g.type === 'kong');
+  const kongs  = groups.filter(g => g.type === 'kong');
+
+  const families = new Set(allTiles.filter(isSuited).map(t => t.type));
+  const hasHonors = allTiles.some(isHonor);
+
+  // ─── 1 POINT ───
+
+  // Double Chow : 2 chows même séquence, familles différentes
+  {
+    let counted = 0;
+    const used = new Set();
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        if (used.has(i) || used.has(j)) continue;
+        const a = chows[i].tiles[0], b = chows[j].tiles[0];
+        if (a.value === b.value && a.type !== b.type) {
+          counted++;
+          used.add(i); used.add(j);
+        }
+      }
+    }
+    if (counted > 0) add('Double Chow', counted);
+  }
+
+  // Double Chow pur : 2 chows identiques même famille
+  {
+    let counted = 0;
+    const used = new Set();
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        if (used.has(i) || used.has(j)) continue;
+        const a = chows[i].tiles[0], b = chows[j].tiles[0];
+        if (a.value === b.value && a.type === b.type) {
+          counted++;
+          used.add(i); used.add(j);
+        }
+      }
+    }
+    if (counted > 0) add('Double Chow pur', counted);
+  }
+
+  // Petite suite pure : 2 chows même famille qui se suivent (ex 345+678 — diff de départ = 3, sans chevauchement)
+  {
+    let counted = 0;
+    const used = new Set();
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        if (used.has(i) || used.has(j)) continue;
+        const a = chows[i].tiles[0], b = chows[j].tiles[0];
+        if (a.type === b.type && Math.abs(a.value - b.value) === 3) {
+          counted++;
+          used.add(i); used.add(j);
+        }
+      }
+    }
+    if (counted > 0) add('Petite suite pure', counted);
+  }
+
+  // Deux Chows purs d'extrémité : 123 + 789 même famille
+  {
+    let counted = 0;
+    const used = new Set();
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        if (used.has(i) || used.has(j)) continue;
+        const a = chows[i].tiles[0], b = chows[j].tiles[0];
+        if (a.type === b.type) {
+          const vals = new Set([a.value, b.value]);
+          if (vals.has(1) && vals.has(7)) {
+            counted++;
+            used.add(i); used.add(j);
+          }
+        }
+      }
+    }
+    if (counted > 0) add('Deux Chows purs d\'extrémité', counted);
+  }
+
+  // Une famille absente (exactement 2 familles de suites présentes)
+  if (families.size === 2) add('Une famille absente', 1);
+
+  // Sans honneurs
+  if (!hasHonors) add('Sans honneurs', 1);
+
+  // Tirer soi-même (avec au moins 1 élément exposé)
+  {
+    const hasExposed = groups.some(g => !g.hidden);
+    if (hand.winBy === 'self' && hasExposed) add('Tirer soi-même', 1);
+  }
+
+  // Pung d'extrémité (chaque pung de 1, de 9)
+  pungs.forEach(g => {
+    const t = g.tiles[0];
+    if (isSuited(t) && (t.value === 1 || t.value === 9)) add('Pung d\'extrémité (' + tileLabel(t) + ')', 1);
+  });
+
+  // Pung de Vent (normal, sans être vent du tour/joueur)
+  pungs.forEach(g => {
+    const t = g.tiles[0];
+    if (t.type === 'wind' && t.value !== hand.windRound && t.value !== hand.windPlayer) {
+      add('Pung de Vent (' + tileLabel(t) + ')', 1);
+    }
+  });
+
+  // Kong exposé
+  kongs.filter(g => !g.hidden).forEach(g => {
+    add('Kong exposé (' + tileLabel(g.tiles[0]) + ')', 1);
+  });
+
+  // Fleurs
+  hand.flowers.forEach(f => add('Fleur', 1));
+
+  // Attentes (fournies par le générateur)
+  if (hand.waitType === 'edge')   add('Attente unique au bord', 1);
+  if (hand.waitType === 'closed') add('Attente unique au milieu', 1);
+  if (hand.waitType === 'pair')   add('Attente unique sur la paire', 1);
+
+  // ─── 2 POINTS ───
+
+  // Pung de Dragon
+  pungs.forEach(g => {
+    const t = g.tiles[0];
+    if (t.type === 'dragon') add('Pung de Dragon (' + tileLabel(t) + ')', 2);
+  });
+
+  // Vent du tour / Vent du joueur
+  pungs.forEach(g => {
+    const t = g.tiles[0];
+    if (t.type === 'wind') {
+      if (t.value === hand.windRound)  add('Vent du tour (' + tileLabel(t) + ')', 2);
+      if (t.value === hand.windPlayer) add('Vent du joueur (' + tileLabel(t) + ')', 2);
+    }
+  });
+
+  // Tout Caché donné (inclus par définition dans sept paires et treize orphelins)
+  {
+    const allHidden = groups.every(g => g.hidden) && pair.hidden;
+    if (allHidden && hand.winBy === 'discard' && hand.specialType !== '7pairs') add('Tout caché donné', 2);
+  }
+
+  // Double Pung : 2 pungs même numéro familles différentes
+  {
+    let counted = 0;
+    const used = new Set();
+    for (let i = 0; i < pungs.length; i++) {
+      for (let j = i+1; j < pungs.length; j++) {
+        if (used.has(i) || used.has(j)) continue;
+        const a = pungs[i].tiles[0], b = pungs[j].tiles[0];
+        if (isSuited(a) && isSuited(b) && a.value === b.value && a.type !== b.type) {
+          counted++;
+          used.add(i); used.add(j);
+        }
+      }
+    }
+    if (counted > 0) add('Double Pung', counted * 2);
+  }
+
+  // Tout Chow
+  if (chows.length === 4 && !hasHonors) add('Tout Chow', 2);
+
+  // Deux Pungs cachés
+  {
+    const hiddenPungs = pungs.filter(g => g.hidden).length;
+    if (hiddenPungs >= 2) add('Deux Pungs cachés', 2);
+  }
+
+  // Kong caché
+  kongs.filter(g => g.hidden).forEach(g => {
+    add('Kong caché (' + tileLabel(g.tiles[0]) + ')', 2);
+  });
+
+  // 4 identiques (4 tuiles identiques sans Kong déclaré)
+  // Géré comme une paire de paires dans les 7 paires — ici on cherche si un groupe a 4 tuiles identiques non déclarées en kong
+  // (dans notre générateur, cela peut arriver dans les 7 paires)
+  if (hand.specialType === '7pairs') {
+    const pairValues = hand.pairsList || [];
+    pairValues.forEach(p => {
+      if (p.count === 4) add('4 identiques (' + tileLabel(p.tile) + ')', 2);
+    });
+  }
+
+  // Tout ordinaire
+  const nonFlowerTiles = allTiles.filter(t => t.type !== 'flower');
+  if (nonFlowerTiles.length > 0 && nonFlowerTiles.every(t => isOrdinary(t))) add('Tout ordinaire', 2);
+
+  // ─── 4 POINTS ───
+
+  // Extrémité ou honneur partout
+  {
+    const ok = allElems.every(g => g.tiles.some(isTermOrHonor));
+    if (ok) add('Extrémité ou honneur partout', 4);
+  }
+
+  // Tout caché tiré
+  {
+    const allHidden = groups.every(g => g.hidden) && pair.hidden;
+    if (allHidden && hand.winBy === 'self') add('Tout caché tiré', 4);
+  }
+
+  // Dernière tuile existante
+  if (hand.isLastExisting) add('Dernière tuile existante', 4);
+
+  // Deux Kongs exposés
+  {
+    const expKongs = kongs.filter(g => !g.hidden).length;
+    if (expKongs >= 2) add('Deux Kongs exposés', 4);
+  }
+
+  // ─── 6 POINTS ───
+
+  // Tout Pung
+  if (pungs.length === 4) add('Tout Pung', 6);
+
+  // Semi pure
+  if (families.size === 1 && hasHonors) add('Semi pure', 6);
+
+  // Trois Chows superposés : 3 chows 1 de chaque famille, décalés d'1 chiffre
+  {
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        for (let k = j+1; k < chows.length; k++) {
+          const ca = chows[i].tiles[0];
+          const cb = chows[j].tiles[0];
+          const cc = chows[k].tiles[0];
+          const types = new Set([ca.type, cb.type, cc.type]);
+          if (types.size === 3) {
+            const vals = [ca.value, cb.value, cc.value].sort((a,b)=>a-b);
+            if (vals[1]-vals[0]===1 && vals[2]-vals[1]===1) {
+              add('Trois Chows superposés', 6);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Tout exposé
+  {
+    const allExposed = groups.every(g => !g.hidden) && !pair.hidden;
+    if (allExposed && hand.winBy === 'discard') add('Tout exposé', 6);
+  }
+
+  // Deux Dragons : 2 pungs de dragon
+  {
+    const dragonPungs = pungs.filter(g => g.tiles[0].type === 'dragon').length;
+    if (dragonPungs >= 2) add('Deux Dragons', 6);
+  }
+
+  // Kong caché + Kong exposé
+  {
+    const hiddenK = kongs.filter(g => g.hidden).length;
+    const exposedK = kongs.filter(g => !g.hidden).length;
+    if (hiddenK >= 1 && exposedK >= 1) add('Kong caché + Kong exposé', 6);
+  }
+
+  // Tout Type : 5 types présents
+  {
+    const types = new Set(allTiles.map(t => t.type));
+    const hasAllTypes = ['bamboo','circle','character','wind','dragon'].every(t => types.has(t));
+    if (hasAllTypes) add('Tout Type', 6);
+  }
+
+  // ─── 8 POINTS ───
+
+  // Grande suite : un chow à 1, un chow à 4, un chow à 7, dans 3 familles différentes
+  {
+    const chows1 = chows.filter(g => g.tiles[0].value === 1);
+    const chows4 = chows.filter(g => g.tiles[0].value === 4);
+    const chows7 = chows.filter(g => g.tiles[0].value === 7);
+    let found = false;
+    for (const c1 of chows1) for (const c4 of chows4) for (const c7 of chows7) {
+      if (new Set([c1.tiles[0].type, c4.tiles[0].type, c7.tiles[0].type]).size === 3) {
+        found = true; break;
+      }
+    }
+    if (found) add('Grande suite', 8);
+  }
+
+  // Trois Pungs consécutifs : 3 pungs valeurs consécutives, 3 familles
+  {
+    for (let i = 0; i < pungs.length; i++) {
+      for (let j = i+1; j < pungs.length; j++) {
+        for (let k = j+1; k < pungs.length; k++) {
+          const pa = pungs[i].tiles[0], pb = pungs[j].tiles[0], pc = pungs[k].tiles[0];
+          if (!isSuited(pa)||!isSuited(pb)||!isSuited(pc)) continue;
+          const types = new Set([pa.type,pb.type,pc.type]);
+          if (types.size !== 3) continue;
+          const vals = [pa.value,pb.value,pc.value].sort((a,b)=>a-b);
+          if (vals[1]-vals[0]===1 && vals[2]-vals[1]===1) add('Trois Pungs consécutifs', 8);
+        }
+      }
+    }
+  }
+
+  // Triple Chows : 3 chows même valeur, 3 familles
+  {
+    for (let i = 0; i < chows.length; i++) {
+      for (let j = i+1; j < chows.length; j++) {
+        for (let k = j+1; k < chows.length; k++) {
+          const ca = chows[i].tiles[0], cb = chows[j].tiles[0], cc = chows[k].tiles[0];
+          const types = new Set([ca.type,cb.type,cc.type]);
+          if (types.size===3 && ca.value===cb.value && cb.value===cc.value) add('Triple Chows', 8);
+        }
+      }
+    }
+  }
+
+  // Dernière tuile tirée
+  if (hand.isLastTile && hand.winBy === 'self') add('Dernière tuile tirée', 8);
+
+  // Dernière tuile jetée
+  if (hand.isLastDiscard) add('Dernière tuile jetée', 8);
+
+  // Kong volé
+  if (hand.isStolenKong) add('Kong volé', 8);
+
+  // Finir sur Kong
+  if (hand.isAfterKong) add('Finir sur le Kong', 8);
+
+  // 2 Kongs cachés
+  {
+    const hiddenK = kongs.filter(g => g.hidden).length;
+    if (hiddenK >= 2) add('2 Kongs cachés', 8);
+  }
+
+  // Symétrie : toutes les tuiles sont symétriques
+  // Tuiles symétriques : 1b,2b,3b,4b,5b,6b,8b,9b,1r,2r,3r,4r,5r,6r,8r,9r,1c,2c,3c,4c,5c,6c,8c,9c,DragonBlanc,Est,Ouest
+  {
+    const symTiles = new Set([
+      'bamboo_1','bamboo_2','bamboo_3','bamboo_4','bamboo_5','bamboo_6','bamboo_8','bamboo_9',
+      'circle_1','circle_2','circle_3','circle_4','circle_5','circle_6','circle_8','circle_9',
+      'character_1','character_2','character_3','character_4','character_5','character_6','character_8','character_9',
+      'dragon_W','wind_E','wind_W'
+    ]);
+    const handTiles = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handTiles.every(t => symTiles.has(tileKey(t)))) add('Symétrie', 8);
+  }
+
+  // Main sans valeur (main du poulet) — gérée via specialType
+  if (hand.specialType === 'chicken') add('Main sans valeur', 8);
+
+  // ─── 12 POINTS ───
+
+  // Suite serpentine : 147b + 258r + 369c (ou permutations)
+  if (hand.specialType === 'snake') add('Suite serpentine', 12);
+
+  // Petit serpentin
+  if (hand.specialType === 'small_snake') add('Petit serpentin', 12);
+
+  // Les quatre premiers : seulement tuiles 1-4
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && t.value <= 4)) add('Les quatre premiers', 12);
+  }
+
+  // Les quatre derniers : seulement tuiles 6-9
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && t.value >= 6)) add('Les quatre derniers', 12);
+  }
+
+  // Trois grands Vents : 3 pungs de vent
+  {
+    const windPungs = pungs.filter(g => g.tiles[0].type === 'wind').length;
+    if (windPungs >= 3) add('Trois grands Vents', 12);
+  }
+
+  // ─── 16 POINTS ───
+
+  // Grande suite pure : 123+456+789 même famille
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      const famChows = chows.filter(g => g.tiles[0].type === fam).map(g => g.tiles[0].value).sort((a,b)=>a-b);
+      if (famChows.includes(1) && famChows.includes(4) && famChows.includes(7)) {
+        add('Grande suite pure', 16); break;
+      }
+    }
+  }
+
+  // Triple Pung : 3 pungs même numéro, 3 familles
+  {
+    for (let i = 0; i < pungs.length; i++) {
+      for (let j = i+1; j < pungs.length; j++) {
+        for (let k = j+1; k < pungs.length; k++) {
+          const pa = pungs[i].tiles[0], pb = pungs[j].tiles[0], pc = pungs[k].tiles[0];
+          const types = new Set([pa.type,pb.type,pc.type]);
+          if (isSuited(pa)&&isSuited(pb)&&isSuited(pc) && types.size===3 && pa.value===pb.value && pb.value===pc.value) {
+            add('Triple Pung', 16);
+          }
+        }
+      }
+    }
+  }
+
+  // Trois Pungs cachés
+  {
+    const hiddenPungs = pungs.filter(g => g.hidden).length;
+    if (hiddenPungs >= 3) add('Trois Pungs cachés', 16);
+  }
+
+  // Cinq partout : tous les éléments contiennent un 5
+  {
+    const ok = allElems.every(g => g.tiles.some(t => isSuited(t) && t.value === 5));
+    if (ok) add('Cinq partout', 16);
+  }
+
+  // Deux Dragons dans trois familles : 123+789 dans 2 familles, paire 5 dans 3e
+  if (hand.specialType === 'two_dragons_3f') add('Deux Dragons dans trois familles', 16);
+
+  // Trois Chows purs superposés : 3 chows même famille décalés 1 ou 2
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      const famChows = chows.filter(g => g.tiles[0].type === fam).map(g => g.tiles[0].value).sort((a,b)=>a-b);
+      for (let i = 0; i < famChows.length; i++) {
+        for (let j = i+1; j < famChows.length; j++) {
+          for (let k = j+1; k < famChows.length; k++) {
+            const d1 = famChows[j]-famChows[i], d2 = famChows[k]-famChows[j];
+            if ((d1===1&&d2===1)||(d1===2&&d2===2)) add('Trois Chows purs superposés', 16);
+          }
+        }
+      }
+    }
+  }
+
+  // ─── 24 POINTS ───
+
+  // Grand serpentin
+  if (hand.specialType === 'big_snake') add('Grand serpentin', 24);
+
+  // Main pure
+  if (families.size === 1 && !hasHonors) add('Main pure', 24);
+
+  // Triple Chow pur : 3 chows identiques même famille
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      for (let v = 1; v <= 7; v++) {
+        const count = chows.filter(g => g.tiles[0].type === fam && g.tiles[0].value === v).length;
+        if (count >= 3) add('Triple Chow pur', 24);
+      }
+    }
+  }
+
+  // Trois Pungs purs consécutifs : 3 pungs même famille consécutifs
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      const famPungs = pungs.filter(g => g.tiles[0].type === fam).map(g => g.tiles[0].value).sort((a,b)=>a-b);
+      for (let i = 0; i < famPungs.length - 2; i++) {
+        if (famPungs[i+1]-famPungs[i]===1 && famPungs[i+2]-famPungs[i+1]===1) add('Trois Pungs purs consécutifs', 24);
+      }
+    }
+  }
+
+  // Tout Pung paire : pungs uniquement tuiles paires (2,4,6,8)
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && [2,4,6,8].includes(t.value))) add('Tout Pung paire', 24);
+  }
+
+  // Sept paires
+  if (hand.specialType === '7pairs') add('Sept paires', 24);
+
+  // Les trois premiers : seulement 1,2,3
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && t.value <= 3)) add('Les trois premiers', 24);
+  }
+
+  // Les trois derniers : seulement 7,8,9
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && t.value >= 7)) add('Les trois derniers', 24);
+  }
+
+  // Les trois du milieu : seulement 4,5,6
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isSuited(t) && [4,5,6].includes(t.value))) add('Les trois du milieu', 24);
+  }
+
+  // ─── 32 POINTS ───
+
+  // Tout honneur et extrémité
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(isTermOrHonor)) add('Tout honneur et extrémité', 32);
+  }
+
+  // Quatre Chows purs superposés : 4 chows même famille décalés 1 ou 2
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      const famChows = chows.filter(g => g.tiles[0].type === fam).map(g => g.tiles[0].value).sort((a,b)=>a-b);
+      if (famChows.length >= 4) {
+        for (let i = 0; i <= famChows.length-4; i++) {
+          const d1=famChows[i+1]-famChows[i], d2=famChows[i+2]-famChows[i+1], d3=famChows[i+3]-famChows[i+2];
+          if ((d1===1&&d2===1&&d3===1)||(d1===2&&d2===2&&d3===2)) add('Quatre Chows purs superposés', 32);
+        }
+      }
+    }
+  }
+
+  // Trois Kongs
+  {
+    if (kongs.length >= 3) add('Trois Kongs', 32);
+  }
+
+  // ─── 48 POINTS ───
+
+  // Quadruple Chows purs : 4 chows identiques même famille
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      for (let v = 1; v <= 7; v++) {
+        const count = chows.filter(g => g.tiles[0].type === fam && g.tiles[0].value === v).length;
+        if (count >= 4) add('Quadruple Chows purs', 48);
+      }
+    }
+  }
+
+  // Quatre Pungs purs consécutifs
+  {
+    for (const fam of ['bamboo','circle','character']) {
+      const famPungs = pungs.filter(g => g.tiles[0].type === fam).map(g => g.tiles[0].value).sort((a,b)=>a-b);
+      for (let i = 0; i <= famPungs.length-4; i++) {
+        if (famPungs[i+1]-famPungs[i]===1 && famPungs[i+2]-famPungs[i+1]===1 && famPungs[i+3]-famPungs[i+2]===1) {
+          add('Quatre Pungs purs consécutifs', 48);
+        }
+      }
+    }
+  }
+
+  // ─── 64 POINTS ───
+
+  // Quatre Pungs cachés
+  {
+    const hiddenPungs = pungs.filter(g => g.hidden).length;
+    if (hiddenPungs >= 4) add('Quatre Pungs cachés', 64);
+  }
+
+  // Trois petits Dragons : 2 pungs dragon + paire dragon
+  {
+    const dragonPungs = pungs.filter(g => g.tiles[0].type === 'dragon').length;
+    const pairIsDragon = pair.tiles[0].type === 'dragon';
+    if (dragonPungs === 2 && pairIsDragon) add('Trois petits Dragons', 64);
+  }
+
+  // Quatre petits Vents : 3 pungs vent + paire vent
+  {
+    const windPungs = pungs.filter(g => g.tiles[0].type === 'wind').length;
+    const pairIsWind = pair.tiles[0].type === 'wind';
+    if (windPungs === 3 && pairIsWind) add('Quatre petits Vents', 64);
+  }
+
+  // Tout honneur
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(isHonor)) add('Tout honneur', 64);
+  }
+
+  // Tout extrémité
+  {
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => isTerminal(t))) add('Tout extrémité', 64);
+  }
+
+  // Deux Dragons dans une famille : 2×123 + 2×789 + paire 5, même famille
+  if (hand.specialType === 'two_dragons_1f') add('Deux Dragons dans une famille', 64);
+
+  // ─── 88 POINTS ───
+
+  // Sept paires pures consécutives
+  if (hand.specialType === '7pairs_consec') add('Sept paires pures consécutives', 88);
+
+  // Treize orphelins
+  if (hand.specialType === '13orphans') add('Treize orphelins', 88);
+
+  // Neuf portes
+  if (hand.specialType === '9gates') add('Neuf portes', 88);
+
+  // Quatre grands Vents : 4 pungs de vent
+  {
+    const windPungs = pungs.filter(g => g.tiles[0].type === 'wind').length;
+    if (windPungs === 4) add('Quatre grands Vents', 88);
+  }
+
+  // Trois grands Dragons : 3 pungs de dragon
+  {
+    const dragonPungs = pungs.filter(g => g.tiles[0].type === 'dragon').length;
+    if (dragonPungs === 3) add('Trois grands Dragons', 88);
+  }
+
+  // Quatre Kongs
+  if (kongs.length >= 4) add('Quatre Kongs', 88);
+
+  // Main verte
+  {
+    const greenTiles = new Set(['bamboo_2','bamboo_3','bamboo_4','bamboo_6','bamboo_8','dragon_G']);
+    const handT = groups.flatMap(g=>g.tiles).concat(pair.tiles);
+    if (handT.every(t => greenTiles.has(tileKey(t)))) add('Main verte', 88);
+  }
+
+  // ─── TOTAL ───
+  const total = results.reduce((s, r) => s + r.pts, 0);
+  return { items: results, total };
+}

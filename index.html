@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mah-Jong MCR — Entraînement au comptage</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🀄 Mah-Jong MCR</h1>
+      <nav id="tab-bar">
+        <button class="tab-btn active" data-tab="train">Entraînement</button>
+        <button class="tab-btn" data-tab="calc">Calculateur</button>
+      </nav>
+    </header>
+
+    <!-- ═══ ONGLET ENTRAÎNEMENT ═══ -->
+    <div id="tab-train" class="tab-content">
+      <div id="level-bar">
+        <span>Niveau :</span>
+        <div id="level-buttons"></div>
+      </div>
+
+      <section id="hand-section">
+        <h2>Main gagnante</h2>
+        <div id="context-info"></div>
+        <div id="hand-display"></div>
+        <div id="winning-tile-display"></div>
+      </section>
+
+      <section id="answer-section">
+        <div id="question-text">Combien vaut cette main ?</div>
+        <div id="input-row">
+          <input type="number" id="answer-input" min="0" placeholder="Votre réponse en points" />
+          <button id="validate-btn">Valider</button>
+          <button id="new-hand-btn">Nouvelle main</button>
+        </div>
+        <div id="feedback"></div>
+      </section>
+
+      <section id="detail-section" class="hidden">
+        <h2>Détail du calcul</h2>
+        <div id="detail-content"></div>
+        <div id="score-summary"></div>
+        <div id="hand-copy-box">
+          <div id="hand-copy-label">Copier pour discussion :</div>
+          <textarea id="hand-text" readonly rows="4" spellcheck="false"></textarea>
+          <button id="copy-btn">Copier</button>
+        </div>
+        <button id="next-btn">Main suivante →</button>
+      </section>
+
+      <footer>
+        <div id="stats">
+          Mains jouées : <span id="stat-played">0</span> |
+          Correctes : <span id="stat-correct">0</span> |
+          Score moyen d'écart : <span id="stat-avg">—</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ═══ ONGLET CALCULATEUR ═══ -->
+    <div id="tab-calc" class="tab-content hidden">
+
+      <!-- Contexte -->
+      <section id="calc-context-section">
+        <h2>Contexte</h2>
+        <div class="ctx-grid">
+          <div class="ctx-row">
+            <span class="ctx-lbl">Vent dominant :</span>
+            <div class="wind-sel" id="ctx-wind-round">
+              <button class="wind-btn active" data-wind="E">Est</button>
+              <button class="wind-btn" data-wind="S">Sud</button>
+              <button class="wind-btn" data-wind="W">Ouest</button>
+              <button class="wind-btn" data-wind="N">Nord</button>
+            </div>
+          </div>
+          <div class="ctx-row">
+            <span class="ctx-lbl">Vent du joueur :</span>
+            <div class="wind-sel" id="ctx-wind-player">
+              <button class="wind-btn active" data-wind="E">Est</button>
+              <button class="wind-btn" data-wind="S">Sud</button>
+              <button class="wind-btn" data-wind="W">Ouest</button>
+              <button class="wind-btn" data-wind="N">Nord</button>
+            </div>
+          </div>
+          <div class="ctx-row">
+            <span class="ctx-lbl">Gain :</span>
+            <button class="win-btn active" data-win="discard">Écart adverse</button>
+            <button class="win-btn" data-win="self">Tiré soi-même</button>
+          </div>
+          <div class="ctx-row ctx-checks">
+            <label><input type="checkbox" id="opt-last-tile">    Dernière tuile tirée</label>
+            <label><input type="checkbox" id="opt-last-discard"> Dernière tuile jetée</label>
+            <label><input type="checkbox" id="opt-stolen-kong">  Kong volé</label>
+            <label><input type="checkbox" id="opt-after-kong">   Finir sur Kong</label>
+            <label><input type="checkbox" id="opt-last-exist">   Dernière tuile existante</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Palette de tuiles -->
+      <section id="calc-palette-section">
+        <h2>Palette <span id="palette-hint">(cliquer pour ajouter au groupe actif)</span></h2>
+        <div id="tile-palette"></div>
+      </section>
+
+      <!-- Constructeur de main -->
+      <section id="calc-hand-section">
+        <h2>Main</h2>
+        <div id="hand-builder"></div>
+        <div id="wait-row">
+          <label for="wait-type">Attente unique :</label>
+          <select id="wait-type">
+            <option value="">Aucune</option>
+            <option value="edge">Au bord (attente du 3 sur 1-2, ou du 7 sur 8-9)</option>
+            <option value="closed">Au milieu (entre 2 tuiles, ex. 6-8 → 7)</option>
+            <option value="pair">Sur la paire (honneur uniquement)</option>
+          </select>
+        </div>
+        <div id="calc-buttons">
+          <button id="calc-btn">Calculer</button>
+          <button id="reset-btn">Réinitialiser</button>
+        </div>
+      </section>
+
+      <!-- Résultat -->
+      <section id="calc-result" class="hidden"></section>
+
+    </div><!-- /tab-calc -->
+  </div><!-- /app -->
+
+  <script src="tiles.js"></script>
+  <script src="combinations.js"></script>
+  <script src="generator.js"></script>
+  <script src="calculator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
