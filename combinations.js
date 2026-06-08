@@ -470,13 +470,12 @@ function scoreHand(hand) {
   }
 
   // Symétrie : toutes les tuiles sont symétriques
-  // Tuiles symétriques : 1b,2b,3b,4b,5b,6b,8b,9b,1r,2r,3r,4r,5r,6r,8r,9r,1c,2c,3c,4c,5c,6c,8c,9c,DragonBlanc,Est,Ouest
+  // Bambous : 2,4,5,6,8,9 — Cercles : 1,2,3,4,5,6,9 — Dragon blanc uniquement
   {
     const symTiles = new Set([
-      'bamboo_1','bamboo_2','bamboo_3','bamboo_4','bamboo_5','bamboo_6','bamboo_8','bamboo_9',
-      'circle_1','circle_2','circle_3','circle_4','circle_5','circle_6','circle_8','circle_9',
-      'character_1','character_2','character_3','character_4','character_5','character_6','character_8','character_9',
-      'dragon_W','wind_E','wind_W'
+      'bamboo_2','bamboo_4','bamboo_5','bamboo_6','bamboo_8','bamboo_9',
+      'circle_1','circle_2','circle_3','circle_4','circle_5','circle_6','circle_9',
+      'dragon_W',
     ]);
     const handTiles = groups.flatMap(g=>g.tiles).concat(pair.tiles);
     if (handTiles.every(t => symTiles.has(tileKey(t)))) add('Symétrie', 8);
