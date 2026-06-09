@@ -151,75 +151,35 @@ function scoreHand(hand) {
 
   // ─── 1 POINT ───
 
-  // Double Chow : 2 chows même séquence, familles différentes
+  // Pairages de chows — un même chow ne peut participer qu'à une seule combinaison de pairage
+  // Boucle unifiée avec `used` partagé pour respecter la règle d'exclusion MCR
   {
-    let counted = 0;
     const used = new Set();
-    for (let i = 0; i < chows.length; i++) {
-      for (let j = i+1; j < chows.length; j++) {
-        if (used.has(i) || used.has(j)) continue;
-        const a = chows[i].tiles[0], b = chows[j].tiles[0];
-        if (a.value === b.value && a.type !== b.type) {
-          counted++;
-          used.add(i); used.add(j);
-        }
-      }
-    }
-    if (counted > 0) add('Double Chow', counted);
-  }
+    const pairings = [];
 
-  // Double Chow pur : 2 chows identiques même famille
-  {
-    let counted = 0;
-    const used = new Set();
     for (let i = 0; i < chows.length; i++) {
       for (let j = i+1; j < chows.length; j++) {
-        if (used.has(i) || used.has(j)) continue;
         const a = chows[i].tiles[0], b = chows[j].tiles[0];
         if (a.value === b.value && a.type === b.type) {
-          counted++;
-          used.add(i); used.add(j);
-        }
-      }
-    }
-    if (counted > 0) add('Double Chow pur', counted);
-  }
-
-  // Petite suite pure : 2 chows même famille qui se suivent (ex 345+678 — diff de départ = 3, sans chevauchement)
-  {
-    let counted = 0;
-    const used = new Set();
-    for (let i = 0; i < chows.length; i++) {
-      for (let j = i+1; j < chows.length; j++) {
-        if (used.has(i) || used.has(j)) continue;
-        const a = chows[i].tiles[0], b = chows[j].tiles[0];
-        if (a.type === b.type && Math.abs(a.value - b.value) === 3) {
-          counted++;
-          used.add(i); used.add(j);
-        }
-      }
-    }
-    if (counted > 0) add('Petite suite pure', counted);
-  }
-
-  // Deux Chows purs d'extrémité : 123 + 789 même famille
-  {
-    let counted = 0;
-    const used = new Set();
-    for (let i = 0; i < chows.length; i++) {
-      for (let j = i+1; j < chows.length; j++) {
-        if (used.has(i) || used.has(j)) continue;
-        const a = chows[i].tiles[0], b = chows[j].tiles[0];
-        if (a.type === b.type) {
-          const vals = new Set([a.value, b.value]);
-          if (vals.has(1) && vals.has(7)) {
-            counted++;
-            used.add(i); used.add(j);
+          pairings.push({ name: 'Double Chow pur', i, j });
+        } else if (a.value === b.value && a.type !== b.type) {
+          pairings.push({ name: 'Double Chow', i, j });
+        } else if (a.type === b.type) {
+          const lo = Math.min(a.value, b.value), hi = Math.max(a.value, b.value);
+          if (lo === 1 && hi === 7) {
+            pairings.push({ name: "Deux Chows purs d'extrémité", i, j });
+          } else if (hi - lo === 3) {
+            pairings.push({ name: 'Petite suite pure', i, j });
           }
         }
       }
     }
-    if (counted > 0) add('Deux Chows purs d\'extrémité', counted);
+
+    for (const p of pairings) {
+      if (used.has(p.i) || used.has(p.j)) continue;
+      used.add(p.i); used.add(p.j);
+      add(p.name, 1);
+    }
   }
 
   // Une famille absente (exactement 2 familles de suites présentes)
