@@ -175,6 +175,10 @@ function scoreHand(hand) {
       }
     }
 
+    // Priorité : même valeur d'abord (Double Chow pur/Double Chow), puis même famille
+    const priority = { 'Double Chow pur': 1, 'Double Chow': 2, "Deux Chows purs d'extrémité": 3, 'Petite suite pure': 4 };
+    pairings.sort((a, b) => priority[a.name] - priority[b.name]);
+
     for (const p of pairings) {
       if (used.has(p.i) || used.has(p.j)) continue;
       used.add(p.i); used.add(p.j);
