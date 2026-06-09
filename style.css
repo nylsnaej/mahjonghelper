@@ -587,15 +587,20 @@ footer {
   .tile .tile-symbol { font-size: 1.2rem; }
   .tile.winning { transform: translateY(-5px); }
 
-  /* Palette : label sur une ligne, tuiles sur la suivante (pleine largeur) */
-  .palette-row { flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  /* Palette : label sur une ligne, tuiles plus grandes sur la suivante */
+  .palette-row { flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .palette-label { width: 100%; font-size: 0.82rem; color: #aaa; padding: 0; text-align: left; }
+  .palette-tile { width: 48px; height: 65px; font-size: 1.5rem; }
+  .palette-tile .pal-sub { font-size: 0.48rem; }
 
   /* Contexte calculateur */
   .ctx-lbl { width: 100px; font-size: 0.82rem; }
   .wind-btn { padding: 4px 9px; font-size: 0.8rem; }
   .win-btn  { padding: 5px 11px; font-size: 0.8rem; }
-  .opt-btn  { font-size: 0.8rem; padding: 5px 10px; }
+
+  /* Options : grille 2 colonnes, boutons pleine largeur */
+  .ctx-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opt-btn { width: 100%; font-size: 0.8rem; padding: 8px 6px; text-align: center; }
 
   /* Slots constructeur de main */
   .builder-slot { min-width: 80px; padding: 7px; }
