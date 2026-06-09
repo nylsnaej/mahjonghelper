@@ -255,6 +255,29 @@ function renderTileInSlot(tile, isWinning = false) {
   </div>`;
 }
 
+// ── Détection automatique de l'attente ────────────────────────
+
+function detectWaitType() {
+  const slot = calcState.lastSlot;
+  const idx  = calcState.lastIdx;
+  if (!slot || idx === null) return null;
+
+  // Attente sur la paire
+  if (slot === 'pair') return 'pair';
+
+  // Attente dans un chow
+  const g = calcState.groups[+slot[1]];
+  if (!g || detectType(g.tiles) !== 'chow') return null;
+
+  const vals   = g.tiles.map(t => t.value).sort((a,b) => a-b);
+  const winVal = g.tiles[idx].value;
+
+  if (winVal === vals[1])                      return 'closed'; // milieu : 4-[6]-8
+  if (winVal === vals[2] && vals[0] === 1)     return 'edge';   // bord : 1-2-[3]
+  if (winVal === vals[0] && vals[2] === 9)     return 'edge';   // bord : [7]-8-9
+  return null; // attente bilatérale normale
+}
+
 // ── Calcul ────────────────────────────────────────────────────
 
 function calculateScore() {
@@ -284,7 +307,7 @@ function calculateScore() {
     flowers: calcState.flowers,
     winTile: calcState.lastTile || calcState.pair.tiles[1] || null,
     winBy:   calcState.ctx.winBy,
-    waitType: calcState.ctx.waitType,
+    waitType: calcState.ctx.waitType || detectWaitType(),
     windRound:   calcState.ctx.windRound,
     windPlayer:  calcState.ctx.windPlayer,
     isLastTile:  calcState.ctx.isLastTile,
