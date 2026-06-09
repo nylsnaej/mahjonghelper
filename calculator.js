@@ -145,7 +145,7 @@ function renderPalette() {
 
   let html = '';
   rows.forEach(row => {
-    html += `<div class="palette-row"><span class="palette-label">${row.lbl}</span>`;
+    html += `<div class="palette-row"><span class="palette-label">${row.lbl}</span><div class="palette-tiles">`;
     row.tiles.forEach(t => {
       const max   = t.type === 'flower' ? 1 : 4;
       const count = usageCount(t);
@@ -160,7 +160,7 @@ function renderPalette() {
                  ${count > 0 ? `<span class="pal-count">${count}</span>` : ''}
                </div>`;
     });
-    html += '</div>';
+    html += '</div></div>';
   });
   el.innerHTML = html;
 }
@@ -337,8 +337,13 @@ function resetCalc() {
   calcState.pair     = { tiles:[], hidden:true };
   calcState.flowers  = [];
   calcState.activeSlot = 'g0';
+  calcState.ctx.isLastTile = false;
+  calcState.ctx.isLastDiscard = false;
+  calcState.ctx.isStolenKong = false;
+  calcState.ctx.isAfterKong = false;
+  calcState.ctx.isLastExisting = false;
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('calc-result').classList.add('hidden');
-  // Remettre attente à "aucune"
   document.getElementById('wait-type').value = '';
   calcState.ctx.waitType = null;
   refresh();
@@ -391,7 +396,7 @@ function initCalculator() {
     });
   });
 
-  // Cases à cocher
+  // Boutons options (toggle)
   const checks = {
     'opt-last-tile':    'isLastTile',
     'opt-last-discard': 'isLastDiscard',
@@ -400,8 +405,9 @@ function initCalculator() {
     'opt-last-exist':   'isLastExisting',
   };
   Object.entries(checks).forEach(([id, key]) => {
-    document.getElementById(id).addEventListener('change', e => {
-      calcState.ctx[key] = e.target.checked;
+    document.getElementById(id).addEventListener('click', function() {
+      this.classList.toggle('active');
+      calcState.ctx[key] = this.classList.contains('active');
     });
   });
 

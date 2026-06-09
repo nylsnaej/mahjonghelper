@@ -50,9 +50,26 @@ header {
 .ctx-grid { display: flex; flex-direction: column; gap: 10px; }
 .ctx-row  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ctx-lbl  { width: 140px; font-size: 0.9rem; color: #aaa; flex-shrink: 0; }
-.ctx-checks { gap: 16px; margin-top: 4px; }
-.ctx-checks label { font-size: 0.85rem; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-.ctx-checks input { accent-color: #f5c842; }
+.ctx-checks { gap: 8px; margin-top: 4px; }
+
+/* Boutons options (toggle, style différent des boutons gain) */
+.opt-btn {
+  padding: 5px 12px;
+  border: 1px solid #3a3a5a;
+  background: #0d1b2a;
+  color: #888;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.15s;
+}
+.opt-btn.active {
+  background: rgba(46,204,113,0.12);
+  color: #2ecc71;
+  border-color: #2ecc71;
+  font-weight: 600;
+}
+.opt-btn:hover:not(.active) { border-color: #666; color: #bbb; }
 
 .wind-sel { display: flex; gap: 4px; }
 .wind-btn {
@@ -116,6 +133,7 @@ header {
 .palette-tile.flower    .tile-symbol { color: #8e5a0a; font-size: 1.1rem; }
 
 #palette-hint { font-size: 0.8rem; color: #666; font-weight: normal; }
+.palette-tiles { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* ── Constructeur de main ── */
 #hand-builder {
@@ -552,9 +570,7 @@ footer {
 /* Responsive */
 @media (max-width: 600px) {
   #app { padding: 10px; }
-
   section { padding: 12px; margin-bottom: 12px; }
-
   h1 { font-size: 1.2rem; margin-bottom: 8px; }
   h2 { font-size: 0.95rem; margin-bottom: 8px; }
 
@@ -566,26 +582,24 @@ footer {
   #level-bar { gap: 6px; }
   .level-btn { padding: 4px 10px; font-size: 0.78rem; }
 
-  /* Tuiles de main : plus petites */
-  .tile { width: 36px; height: 50px; }
-  .tile .tile-symbol { font-size: 1.1rem; }
-  .tile .tile-label { font-size: 0.48rem; }
+  /* Tuiles de main */
+  .tile { width: 40px; height: 56px; }
+  .tile .tile-symbol { font-size: 1.2rem; }
   .tile.winning { transform: translateY(-5px); }
 
-  /* Tuiles palette : compactes pour 8 par ligne */
-  .palette-tile { width: 33px; height: 45px; font-size: 1.1rem; }
-  .palette-tile .pal-sub { font-size: 0.42rem; }
-  .palette-label { width: 44px; font-size: 0.68rem; padding-right: 4px; }
+  /* Palette : label sur une ligne, tuiles sur la suivante (pleine largeur) */
+  .palette-row { flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .palette-label { width: 100%; font-size: 0.82rem; color: #aaa; padding: 0; text-align: left; }
 
   /* Contexte calculateur */
   .ctx-lbl { width: 100px; font-size: 0.82rem; }
   .wind-btn { padding: 4px 9px; font-size: 0.8rem; }
   .win-btn  { padding: 5px 11px; font-size: 0.8rem; }
-  .ctx-checks label { font-size: 0.8rem; }
+  .opt-btn  { font-size: 0.8rem; padding: 5px 10px; }
 
   /* Slots constructeur de main */
   .builder-slot { min-width: 80px; padding: 7px; }
-  .slot-tiles .tile { width: 33px; height: 45px; }
+  .slot-tiles .tile { width: 38px; height: 52px; }
   .slot-tiles .tile .tile-symbol { font-size: 1.1rem; }
 
   /* Attente */
@@ -601,7 +615,7 @@ footer {
   #answer-input { width: 130px; padding: 8px 10px; font-size: 1rem; }
   #validate-btn, #new-hand-btn { padding: 8px 14px; font-size: 0.9rem; }
 
-  /* Tableau de détail */
+  /* Tableaux */
   #detail-section th, #detail-section td { padding: 5px 8px; font-size: 0.82rem; }
   #calc-result th, #calc-result td { padding: 5px 8px; font-size: 0.82rem; }
 
