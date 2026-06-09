@@ -5,6 +5,9 @@ let calcState = {
   pair:    { tiles: [], hidden: true },
   flowers: [],
   activeSlot: 'g0',   // 'g0'..'g3' | 'pair' | 'flower'
+  lastTile: null,     // dernière tuile ajoutée = tuile gagnante
+  lastSlot: null,     // slot contenant la tuile gagnante
+  lastIdx:  null,     // index dans le slot
   ctx: {
     windRound: 'E', windPlayer: 'E', winBy: 'discard', waitType: null,
     isLastTile: false, isLastDiscard: false,
@@ -73,17 +76,20 @@ function addTile(type, value) {
     if (tile.type !== 'flower') return;
     if (calcState.flowers.length >= 8) return;
     calcState.flowers.push(tile);
+    // les fleurs ne sont pas tuile gagnante
     refresh(); return;
   }
   if (slot === 'pair') {
     if (calcState.pair.tiles.length >= 2) return;
     calcState.pair.tiles.push(tile);
+    calcState.lastTile = tile; calcState.lastSlot = 'pair'; calcState.lastIdx = calcState.pair.tiles.length - 1;
     if (isGroupComplete('pair')) calcState.activeSlot = nextSlot('pair');
     refresh(); return;
   }
   const g = calcState.groups[+slot[1]];
   if (g.tiles.length >= 4) return;
   g.tiles.push(tile);
+  calcState.lastTile = tile; calcState.lastSlot = slot; calcState.lastIdx = g.tiles.length - 1;
   const t = detectType(g.tiles);
   if (t === 'chow' || t === 'pung') calcState.activeSlot = nextSlot(slot);
   refresh();
@@ -94,6 +100,7 @@ function removeLast(slotId, ev) {
   if (slotId === 'pair')   { calcState.pair.tiles.pop(); }
   else if (slotId === 'flower') { calcState.flowers.pop(); }
   else { calcState.groups[+slotId[1]].tiles.pop(); }
+  if (calcState.lastSlot === slotId) { calcState.lastTile = null; calcState.lastSlot = null; calcState.lastIdx = null; }
   calcState.activeSlot = slotId;
   refresh();
 }
@@ -103,6 +110,7 @@ function clearSlot(slotId, ev) {
   if (slotId === 'pair')   { calcState.pair = { tiles:[], hidden:false }; }
   else if (slotId === 'flower') { calcState.flowers = []; }
   else { calcState.groups[+slotId[1]] = { tiles:[], hidden:false }; }
+  if (calcState.lastSlot === slotId) { calcState.lastTile = null; calcState.lastSlot = null; calcState.lastIdx = null; }
   calcState.activeSlot = slotId;
   refresh();
 }
@@ -186,7 +194,7 @@ function renderBuilder() {
         ${g.tiles.length ? `<span class="${typeCls}">${typeLabel(t)}</span>` : ''}
       </div>
       <div class="slot-tiles">
-        ${g.tiles.map(tile => renderTileInSlot(tile)).join('')}
+        ${g.tiles.map((tile, idx) => renderTileInSlot(tile, calcState.lastSlot === sid && calcState.lastIdx === idx)).join('')}
         ${!g.tiles.length ? '<span class="slot-empty">vide</span>' : ''}
       </div>
       <div class="slot-controls">
@@ -209,7 +217,7 @@ function renderBuilder() {
       ${calcState.pair.tiles.length ? `<span class="slot-type">${typeLabel(pairT)}</span>` : ''}
     </div>
     <div class="slot-tiles">
-      ${calcState.pair.tiles.map(tile => renderTileInSlot(tile)).join('')}
+      ${calcState.pair.tiles.map((tile, idx) => renderTileInSlot(tile, calcState.lastSlot === 'pair' && calcState.lastIdx === idx)).join('')}
       ${!calcState.pair.tiles.length ? '<span class="slot-empty">vide</span>' : ''}
     </div>
     <div class="slot-controls">
@@ -237,10 +245,11 @@ function renderBuilder() {
 }
 
 // Rendu d'une tuile dans les slots (taille palette = 40×54)
-function renderTileInSlot(tile) {
+function renderTileInSlot(tile, isWinning = false) {
   const sym = tileSymbol(tile);
   const lbl = tileLabel(tile);
-  return `<div class="tile ${tile.type}" title="${lbl}">
+  const cls = `tile ${tile.type}${isWinning ? ' winning' : ''}`;
+  return `<div class="${cls}" title="${lbl}${isWinning ? ' — tuile gagnante' : ''}">
     <span class="tile-symbol">${sym}</span>
     <span class="tile-label">${lbl}</span>
   </div>`;
@@ -273,7 +282,7 @@ function calculateScore() {
     })),
     pair:    calcState.pair,
     flowers: calcState.flowers,
-    winTile: calcState.pair.tiles[1] || null,
+    winTile: calcState.lastTile || calcState.pair.tiles[1] || null,
     winBy:   calcState.ctx.winBy,
     waitType: calcState.ctx.waitType,
     windRound:   calcState.ctx.windRound,
@@ -337,6 +346,7 @@ function resetCalc() {
   calcState.pair     = { tiles:[], hidden:true };
   calcState.flowers  = [];
   calcState.activeSlot = 'g0';
+  calcState.lastTile = null; calcState.lastSlot = null; calcState.lastIdx = null;
   calcState.ctx.isLastTile = false;
   calcState.ctx.isLastDiscard = false;
   calcState.ctx.isStolenKong = false;
