@@ -116,6 +116,36 @@ test('[Expert 12 pts] 4 identiques (6R) + Semi pure', () => {
   assertHas(items, 'Semi pure',          6);
 });
 
+// ── #3 ──────────────────────────────────────────────────────────────────────────
+// Pung[7C×3] · Pung[3C×3] · CachéPung[Vert×3] · CachéPung[Rouge×3] · Paire[Est×2] · ×1 fleur
+// Tuile gagnante : Rouge | écart | Est/Est
+// "Deux Dragons" subsume les "Pung de Dragon" individuels
+// Expert → Deux Dragons +6 | Deux Pungs cachés +2 | Tout Pung +6 | Semi pure +6 | Fleur +1 = 21 pts
+// (l'expert a oublié Deux Pungs cachés et annonçait 19 pts)
+test('[Expert 21 pts] Deux Dragons subsume Pung de Dragon individuels', () => {
+  const C = v => makeTile('character', v);
+  const hand = makeHand({
+    groups: [
+      { type: 'pung', tiles: [C(7), C(7), C(7)],                                                              hidden: false },
+      { type: 'pung', tiles: [C(3), C(3), C(3)],                                                              hidden: false },
+      { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G')],         hidden: true  },
+      { type: 'pung', tiles: [makeTile('dragon','R'), makeTile('dragon','R'), makeTile('dragon','R')],         hidden: true  },
+    ],
+    pair:    { tiles: [makeTile('wind','E'), makeTile('wind','E')], hidden: false },
+    flowers: [makeTile('flower',1)],
+    winTile:  makeTile('dragon','R'),
+  });
+  const { items, total } = scoreHand(hand);
+  assertEqual(total, 21, 'total');
+  assertHas(items, 'Deux Dragons',       6);
+  assertHas(items, 'Deux Pungs cachés',  2);
+  assertHas(items, 'Tout Pung',          6);
+  assertHas(items, 'Semi pure',          6);
+  assertHas(items, 'Fleur',              1);
+  assertNotHas(items, 'Pung de Dragon (Vert)');
+  assertNotHas(items, 'Pung de Dragon (Rouge)');
+});
+
 // ── Résumé ──────────────────────────────────────────────────────────────────────
 
 console.log(`\n  ${passed} réussi${passed > 1 ? 's' : ''}, ${failed} échoué${failed > 1 ? 's' : ''}\n`);

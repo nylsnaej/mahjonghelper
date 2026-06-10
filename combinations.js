@@ -227,11 +227,13 @@ function scoreHand(hand) {
 
   // ─── 2 POINTS ───
 
-  // Pung de Dragon
-  pungs.forEach(g => {
-    const t = g.tiles[0];
-    if (t.type === 'dragon') add('Pung de Dragon (' + tileLabel(t) + ')', 2);
-  });
+  // Pung de Dragon — non cumulable avec "Deux Dragons" (qui le subsume)
+  {
+    const dragonPungs = pungs.filter(g => g.tiles[0].type === 'dragon');
+    if (dragonPungs.length < 2) {
+      dragonPungs.forEach(g => add('Pung de Dragon (' + tileLabel(g.tiles[0]) + ')', 2));
+    }
+  }
 
   // Vent du tour / Vent du joueur
   pungs.forEach(g => {
