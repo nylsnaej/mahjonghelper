@@ -106,6 +106,25 @@ export const RULES_DOC: RuleDoc[] = [
     note: 'En MCR la paire (tête) n\'est jamais déclarée/exposée comme un groupe. Seuls les 4 groupes comptent pour évaluer si la main est cachée.',
   },
 
+  {
+    id: 'tout-expose-excl-attente-paire',
+    rule: '"Tout exposé" exclut "Attente unique sur la paire"',
+    status: 'confirmed',
+    sources: [
+      {
+        type: 'pdf',
+        ref: 'MCR_Combinaisons.pdf p.16 (FFMJ Mai 2013)',
+        quote: '« Étant donné la définition de cette combinaison, le point pour attente sur la paire est inclus. »',
+      },
+      {
+        type: 'website',
+        ref: 'ventdestmahjong.fr main 202',
+        quote: 'Calcul validé sans "Attente unique sur la paire".',
+      },
+    ],
+    note: 'Tout exposé requiert par définition que la dernière tuile soit un écart sur la paire — l\'attente est donc toujours "sur la paire", la combiner serait redondant.',
+  },
+
   // ── Questions en suspens ──────────────────────────────────────────────────
 
   {

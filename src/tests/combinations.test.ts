@@ -291,4 +291,36 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Sept paires',         24);
     expectHas(items, 'Une famille absente',  1);
   });
+
+  // ── #11 ───────────────────────────────────────────────────────────────────
+  // Pung [7C×3] · Pung [5C×3] · Pung [5R×3] · Pung [4R×3] · Paire [6C×2]
+  // Tuile gagnante : 6C (attente sur la paire) | écart | Est/Est
+  // Référence : ventdestmahjong.fr main 202
+  // PDF p.16 : « le point pour attente sur la paire est inclus » dans Tout exposé
+  // Score → Une famille absente +1 | Double Pung +2 | Tout ordinaire +2 | Tout Pung +6 | Tout exposé +6 = 17 pts
+  test('[Expert 17 pts] Tout exposé exclut attente sur la paire', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [C(7), C(7), C(7)], hidden: false },
+        { type: 'pung', tiles: [C(5), C(5), C(5)], hidden: false },
+        { type: 'pung', tiles: [R(5), R(5), R(5)], hidden: false },
+        { type: 'pung', tiles: [R(4), R(4), R(4)], hidden: false },
+      ],
+      pair:    { tiles: [C(6), C(6)], hidden: false },
+      winTile:  C(6),
+      waitType: 'pair',
+      winBy:    'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(17);
+    expectHas(items, 'Une famille absente',  1);
+    expectHas(items, 'Double Pung',          2);
+    expectHas(items, 'Tout ordinaire',       2);
+    expectHas(items, 'Tout Pung',            6);
+    expectHas(items, 'Tout exposé',          6);
+    expectNotHas(items, 'Attente unique sur la paire');
+    expectNotHas(items, 'Sans honneurs');
+  });
 });

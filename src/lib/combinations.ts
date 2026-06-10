@@ -691,6 +691,10 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
     rm('Triple Chow pur'); rm('Double Chow pur'); rmPfx('4 identiques');
   }
 
+  // PDF p.16 — Tout exposé
+  // → « le point pour attente sur la paire est inclus »
+  if (has('Tout exposé')) rm('Attente unique sur la paire');
+
   // PDF p.19 + exemples pp.37-38 — Triple Chows exclut Double Chow (familles diff.)
   // Tous les exemples PDF avec Triple Chows montrent uniquement Double Chow PUR
   // en complément, jamais Double Chow (familles différentes).
