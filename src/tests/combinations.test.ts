@@ -263,4 +263,32 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Pung de Dragon (Blanc)',   2);
     expectHas(items, 'Semi pure',               6);
   });
+
+  // ── #10 ───────────────────────────────────────────────────────────────────
+  // Sept paires [4C4C / 8C8C / 5B5B / 6B6B / BlancBlanc / VertVert / NordNord]
+  // Tuile gagnante : Nord | écart | Est/Est
+  // Référence : ventdestmahjong.fr main 40
+  // Score → Sept paires +24 | Une famille absente +1 = 25 pts
+  test('[Expert 25 pts] Sept paires + Une famille absente', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pair7', tiles: [C(4), C(4)],                                                             hidden: true },
+        { type: 'pair7', tiles: [C(8), C(8)],                                                             hidden: true },
+        { type: 'pair7', tiles: [B(5), B(5)],                                                             hidden: true },
+        { type: 'pair7', tiles: [B(6), B(6)],                                                             hidden: true },
+        { type: 'pair7', tiles: [makeTile('dragon','W'), makeTile('dragon','W')],                         hidden: true },
+        { type: 'pair7', tiles: [makeTile('dragon','G'), makeTile('dragon','G')],                         hidden: true },
+      ],
+      pair:        { tiles: [makeTile('wind','N'), makeTile('wind','N')], hidden: true },
+      winTile:     makeTile('wind', 'N'),
+      winBy:       'discard',
+      specialType: '7pairs',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(25);
+    expectHas(items, 'Sept paires',         24);
+    expectHas(items, 'Une famille absente',  1);
+  });
 });
