@@ -6,11 +6,14 @@ import type { Tile, Hand } from '../types';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+type CalcMode = 'standard' | '7pairs';
+
 interface SlotGroup { tiles: Tile[]; hidden: boolean; }
 
 interface CalcState {
-  groups: SlotGroup[];
-  pair: SlotGroup;
+  mode: CalcMode;
+  groups: SlotGroup[];   // 4 slots en standard, 7 en 7pairs
+  pair: SlotGroup;       // utilisé seulement en standard
   flowers: Tile[];
   activeSlot: string;
   lastTile: Tile | null;
@@ -24,6 +27,7 @@ type CalcAction =
   | { type: 'CLEAR_SLOT'; slotId: string }
   | { type: 'TOGGLE_HIDDEN'; slotId: string; hidden: boolean }
   | { type: 'SET_ACTIVE'; slotId: string }
+  | { type: 'SET_MODE'; mode: CalcMode }
   | { type: 'RESET' };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,18 +49,29 @@ function detectType(tiles: Tile[]): string {
 }
 
 function isGroupComplete(state: CalcState, slotId: string): boolean {
-  if (slotId === 'pair')   return detectType(state.pair.tiles) === 'pair_ok';
   if (slotId === 'flower') return false;
-  const t = detectType(state.groups[+slotId[1]!]!.tiles);
-  return t === 'chow' || t === 'pung' || t === 'kong';
+  if (slotId === 'pair') {
+    if (state.mode === '7pairs') return false;
+    return detectType(state.pair.tiles) === 'pair_ok';
+  }
+  const idx = +slotId[1]!;
+  if (idx >= state.groups.length) return false;
+  const t = detectType(state.groups[idx]!.tiles);
+  return state.mode === '7pairs' ? t === 'pair_ok' : (t === 'chow' || t === 'pung' || t === 'kong');
+}
+
+function slotOrder(mode: CalcMode): string[] {
+  return mode === '7pairs'
+    ? ['g0','g1','g2','g3','g4','g5','g6']
+    : ['g0','g1','g2','g3','pair','flower'];
 }
 
 function nextSlot(state: CalcState, current: string): string {
-  const order = ['g0','g1','g2','g3','pair','flower'];
+  const order = slotOrder(state.mode);
   for (let i = order.indexOf(current) + 1; i < order.length; i++) {
     if (!isGroupComplete(state, order[i]!)) return order[i]!;
   }
-  return 'flower';
+  return order[order.length - 1]!;
 }
 
 function typeLabel(t: string): string {
@@ -66,12 +81,18 @@ function typeLabel(t: string): string {
 const MAX_PER_TILE = 4;
 const MAX_FLOWER   = 1;
 
+function makeGroups(mode: CalcMode): SlotGroup[] {
+  const n = mode === '7pairs' ? 7 : 4;
+  return Array.from({ length: n }, () => ({ tiles: [], hidden: false }));
+}
+
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
 function initState(): CalcState {
   return {
-    groups: Array.from({ length: 4 }, () => ({ tiles: [], hidden: false })),
-    pair:   { tiles: [], hidden: false },
+    mode: 'standard',
+    groups: makeGroups('standard'),
+    pair: { tiles: [], hidden: false },
     flowers: [],
     activeSlot: 'g0',
     lastTile: null, lastSlot: null, lastIdx: null,
@@ -80,6 +101,12 @@ function initState(): CalcState {
 
 function calcReducer(state: CalcState, action: CalcAction): CalcState {
   switch (action.type) {
+
+    case 'SET_MODE': {
+      if (action.mode === state.mode) return state;
+      return { ...initState(), mode: action.mode, groups: makeGroups(action.mode) };
+    }
+
     case 'ADD_TILE': {
       const tile = makeTile(action.tileType as Tile['type'], isNaN(action.value as number) ? action.value : +action.value);
       const slot = state.activeSlot;
@@ -89,58 +116,58 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
         return { ...state, flowers: [...state.flowers, tile] };
       }
 
-      const newState = { ...state };
-
       if (slot === 'pair') {
-        if (state.pair.tiles.length >= 2) return state;
+        if (state.mode === '7pairs' || state.pair.tiles.length >= 2) return state;
         const tiles = [...state.pair.tiles, tile];
         const idx   = tiles.length - 1;
-        newState.pair = { ...state.pair, tiles };
-        newState.lastTile = tile; newState.lastSlot = 'pair'; newState.lastIdx = idx;
-        const nextSt = { ...newState };
-        if (detectType(tiles) === 'pair_ok') nextSt.activeSlot = nextSlot(newState, 'pair');
-        return nextSt;
+        const newState = { ...state, pair: { ...state.pair, tiles }, lastTile: tile, lastSlot: 'pair', lastIdx: idx };
+        if (detectType(tiles) === 'pair_ok') newState.activeSlot = nextSlot(newState, 'pair');
+        return newState;
       }
 
       const gi = +slot[1]!;
-      const g  = state.groups[gi]!;
-      if (g.tiles.length >= 4) return state;
+      if (gi >= state.groups.length) return state;
+      const g = state.groups[gi]!;
+      const maxTiles = state.mode === '7pairs' ? 2 : 4;
+      if (g.tiles.length >= maxTiles) return state;
       const tiles = [...g.tiles, tile];
       const idx   = tiles.length - 1;
       const groups = state.groups.map((grp, i) => i === gi ? { ...grp, tiles } : grp);
-      newState.groups  = groups;
-      newState.lastTile = tile; newState.lastSlot = slot; newState.lastIdx = idx;
+      const newState = { ...state, groups, lastTile: tile, lastSlot: slot, lastIdx: idx };
       const t = detectType(tiles);
-      if (t === 'chow' || t === 'pung') newState.activeSlot = nextSlot({ ...newState }, slot);
+      const complete = state.mode === '7pairs' ? t === 'pair_ok' : (t === 'chow' || t === 'pung');
+      if (complete) newState.activeSlot = nextSlot({ ...newState }, slot);
       return newState;
     }
 
     case 'REMOVE_LAST': {
       const sid = action.slotId;
       const clearing = state.lastSlot === sid;
+      const reset = clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {};
       if (sid === 'pair') {
-        return { ...state, pair: { ...state.pair, tiles: state.pair.tiles.slice(0, -1) }, activeSlot: sid, ...(clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {}) };
+        return { ...state, pair: { ...state.pair, tiles: state.pair.tiles.slice(0,-1) }, activeSlot: sid, ...reset };
       }
       if (sid === 'flower') {
-        return { ...state, flowers: state.flowers.slice(0, -1), activeSlot: sid };
+        return { ...state, flowers: state.flowers.slice(0,-1), activeSlot: sid };
       }
       const gi = +sid[1]!;
-      const groups = state.groups.map((g, i) => i === gi ? { ...g, tiles: g.tiles.slice(0, -1) } : g);
-      return { ...state, groups, activeSlot: sid, ...(clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {}) };
+      const groups = state.groups.map((g, i) => i === gi ? { ...g, tiles: g.tiles.slice(0,-1) } : g);
+      return { ...state, groups, activeSlot: sid, ...reset };
     }
 
     case 'CLEAR_SLOT': {
       const sid = action.slotId;
       const clearing = state.lastSlot === sid;
+      const reset = clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {};
       if (sid === 'pair') {
-        return { ...state, pair: { tiles: [], hidden: false }, activeSlot: sid, ...(clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {}) };
+        return { ...state, pair: { tiles: [], hidden: false }, activeSlot: sid, ...reset };
       }
       if (sid === 'flower') {
         return { ...state, flowers: [], activeSlot: sid };
       }
       const gi = +sid[1]!;
       const groups = state.groups.map((g, i) => i === gi ? { tiles: [], hidden: false } : g);
-      return { ...state, groups, activeSlot: sid, ...(clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {}) };
+      return { ...state, groups, activeSlot: sid, ...reset };
     }
 
     case 'TOGGLE_HIDDEN': {
@@ -155,7 +182,7 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
       return { ...state, activeSlot: action.slotId };
 
     case 'RESET':
-      return initState();
+      return { ...initState(), mode: state.mode, groups: makeGroups(state.mode) };
   }
 }
 
@@ -180,6 +207,8 @@ export function CalculatorTab() {
   const [result, setResult] = useState<{ ok: true; hand: Hand; items: { name: string; pts: number }[]; total: number } | { ok: false; error: string } | null>(null);
   const [copyLabel, setCopyLabel] = useState('Copier');
 
+  const is7pairs = state.mode === '7pairs';
+
   function usageCount(tile: Tile): number {
     let n = 0;
     state.groups.forEach(g => g.tiles.forEach(t => { if (tilesEqual(t, tile)) n++; }));
@@ -189,6 +218,7 @@ export function CalculatorTab() {
   }
 
   function detectWaitType(): string | null {
+    if (is7pairs) return null;
     const { lastSlot, lastIdx } = state;
     if (!lastSlot || lastIdx === null) return null;
     if (lastSlot === 'pair') return 'pair';
@@ -203,6 +233,35 @@ export function CalculatorTab() {
   }
 
   function calculateScore() {
+    if (is7pairs) {
+      const complete = state.groups.filter(g => detectType(g.tiles) === 'pair_ok');
+      if (complete.length < 7) {
+        setResult({ ok: false, error: `Il faut 7 paires — actuellement : ${complete.length}/7.` });
+        return;
+      }
+      // La paire gagnante = dernier slot modifié
+      const winIdx = (state.lastSlot?.startsWith('g') ? +state.lastSlot[1]! : 6);
+      const winSlot = state.groups[winIdx] ?? state.groups[6]!;
+      const pairGroups = state.groups
+        .map((g, i) => i === winIdx ? null : { type: 'pair7' as const, tiles: g.tiles, hidden: true })
+        .filter((g): g is NonNullable<typeof g> => g !== null);
+      const hand: Hand = {
+        groups: pairGroups,
+        pair:    { tiles: winSlot.tiles, hidden: true },
+        flowers: state.flowers,
+        winTile: state.lastTile,
+        winBy:   ctx.winBy,
+        waitType: (ctx.waitType ?? null) as 'edge' | 'closed' | 'pair' | null,
+        windRound: ctx.windRound, windPlayer: ctx.windPlayer,
+        isLastTile: ctx.isLastTile, isLastDiscard: ctx.isLastDiscard,
+        isStolenKong: ctx.isStolenKong, isAfterKong: ctx.isAfterKong, isLastExisting: ctx.isLastExisting,
+        specialType: '7pairs',
+      };
+      const { items, total } = scoreHand(hand);
+      setResult({ ok: true, hand, items, total });
+      return;
+    }
+
     const validGroups = state.groups.filter(g => {
       const t = detectType(g.tiles);
       return t === 'chow' || t === 'pung' || t === 'kong';
@@ -215,7 +274,6 @@ export function CalculatorTab() {
       setResult({ ok: false, error: 'La paire doit contenir 2 tuiles identiques.' });
       return;
     }
-
     const hand: Hand = {
       groups: validGroups.map(g => ({ type: detectType(g.tiles) as 'chow' | 'pung' | 'kong', tiles: g.tiles, hidden: g.hidden })),
       pair:    state.pair,
@@ -228,13 +286,18 @@ export function CalculatorTab() {
       isStolenKong: ctx.isStolenKong, isAfterKong: ctx.isAfterKong, isLastExisting: ctx.isLastExisting,
       specialType: null,
     };
-
     const { items, total } = scoreHand(hand);
     setResult({ ok: true, hand, items, total });
   }
 
   function reset() {
     dispatch({ type: 'RESET' });
+    setCtx(initCtx());
+    setResult(null);
+  }
+
+  function switchMode(mode: CalcMode) {
+    dispatch({ type: 'SET_MODE', mode });
     setCtx(initCtx());
     setResult(null);
   }
@@ -253,7 +316,6 @@ export function CalculatorTab() {
       <section id="calc-context-section">
         <h2>Contexte</h2>
         <div className="ctx-grid">
-          {/* Vent dominant */}
           <div className="ctx-row">
             <span className="ctx-lbl">Vent dominant :</span>
             <div className="wind-sel">
@@ -265,7 +327,6 @@ export function CalculatorTab() {
               ))}
             </div>
           </div>
-          {/* Vent du joueur */}
           <div className="ctx-row">
             <span className="ctx-lbl">Vent du joueur :</span>
             <div className="wind-sel">
@@ -277,13 +338,11 @@ export function CalculatorTab() {
               ))}
             </div>
           </div>
-          {/* Gain */}
           <div className="ctx-row">
             <span className="ctx-lbl">Gain :</span>
             <button className={'win-btn' + (ctx.winBy === 'discard' ? ' active' : '')} onClick={() => setCtx(c => ({ ...c, winBy: 'discard' }))}>Écart adverse</button>
-            <button className={'win-btn' + (ctx.winBy === 'self' ? ' active' : '')}    onClick={() => setCtx(c => ({ ...c, winBy: 'self' }))}>Tiré soi-même</button>
+            <button className={'win-btn' + (ctx.winBy === 'self'    ? ' active' : '')} onClick={() => setCtx(c => ({ ...c, winBy: 'self' }))}>Tiré soi-même</button>
           </div>
-          {/* Options */}
           <div className="ctx-row ctx-checks">
             {optionKeys.map(([label, key]) => (
               <button key={key} className={'opt-btn' + (ctx[key] ? ' active' : '')}
@@ -310,14 +369,14 @@ export function CalculatorTab() {
               <span className="palette-label">{row.lbl}</span>
               <div className="palette-tiles">
                 {row.tiles.map((t, i) => {
-                  const max   = t.type === 'flower' ? MAX_FLOWER : MAX_PER_TILE;
-                  const count = usageCount(t);
-                  const dis   = count >= max ? 'palette-tile-disabled' : '';
+                  const maxTile = t.type === 'flower' ? MAX_FLOWER : (is7pairs ? 2 : MAX_PER_TILE);
+                  const count   = usageCount(t);
+                  const dis     = count >= maxTile ? 'palette-tile-disabled' : '';
                   return (
                     <div key={i}
                       className={`palette-tile ${t.type} ${dis}`}
                       title={tileLabel(t)}
-                      onClick={() => { if (count < max) dispatch({ type: 'ADD_TILE', tileType: t.type, value: t.value }); }}
+                      onClick={() => { if (count < maxTile) dispatch({ type: 'ADD_TILE', tileType: t.type, value: t.value }); }}
                     >
                       <span className="tile-symbol">{tileSymbol(t)}</span>
                       <span className="pal-sub">{tileLabel(t)}</span>
@@ -334,18 +393,26 @@ export function CalculatorTab() {
       {/* ── Constructeur ── */}
       <section id="calc-hand-section">
         <h2>Main</h2>
+
+        {/* Toggle mode */}
+        <div id="calc-mode-row">
+          <button className={'mode-btn' + (!is7pairs ? ' active' : '')} onClick={() => switchMode('standard')}>Standard</button>
+          <button className={'mode-btn' + ( is7pairs ? ' active' : '')} onClick={() => switchMode('7pairs')}>7 Paires</button>
+        </div>
+
         <div id="hand-builder">
           {state.groups.map((g, i) => {
             const sid   = 'g' + i;
             const t     = detectType(g.tiles);
-            const compl = t === 'chow' || t === 'pung' || t === 'kong';
+            const compl = is7pairs ? t === 'pair_ok' : (t === 'chow' || t === 'pung' || t === 'kong');
             const inv   = t === 'invalid';
             const act   = state.activeSlot === sid;
             const cls   = ['builder-slot', act?'slot-active':'', compl?'slot-complete':'', inv?'slot-invalid':''].filter(Boolean).join(' ');
+            const label = is7pairs ? `Paire ${i+1}` : `Groupe ${i+1}`;
             return (
               <div key={sid} className={cls} onClick={() => dispatch({ type: 'SET_ACTIVE', slotId: sid })}>
                 <div className="slot-label">
-                  Groupe {i+1}
+                  {label}
                   {g.tiles.length > 0 && <span className={'slot-type' + (inv?' type-invalid':'')}>{typeLabel(t)}</span>}
                 </div>
                 <div className="slot-tiles">
@@ -357,9 +424,9 @@ export function CalculatorTab() {
                 <div className="slot-controls" onClick={e => e.stopPropagation()}>
                   {g.tiles.length > 0 && <>
                     <button className="slot-btn" onClick={() => dispatch({ type: 'REMOVE_LAST', slotId: sid })}>⌫</button>
-                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT', slotId: sid })}>✕</button>
+                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT',   slotId: sid })}>✕</button>
                   </>}
-                  {compl && (
+                  {compl && !is7pairs && (
                     <label className="hidden-toggle">
                       <input type="checkbox" checked={g.hidden} onChange={e => dispatch({ type: 'TOGGLE_HIDDEN', slotId: sid, hidden: e.target.checked })} />
                       {' '}Caché
@@ -370,8 +437,8 @@ export function CalculatorTab() {
             );
           })}
 
-          {/* Paire */}
-          {(() => {
+          {/* Paire — seulement en mode standard */}
+          {!is7pairs && (() => {
             const pairT   = detectType(state.pair.tiles);
             const pairOk  = pairT === 'pair_ok';
             const pairAct = state.activeSlot === 'pair';
@@ -391,7 +458,7 @@ export function CalculatorTab() {
                 <div className="slot-controls" onClick={e => e.stopPropagation()}>
                   {state.pair.tiles.length > 0 && <>
                     <button className="slot-btn" onClick={() => dispatch({ type: 'REMOVE_LAST', slotId: 'pair' })}>⌫</button>
-                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT', slotId: 'pair' })}>✕</button>
+                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT',   slotId: 'pair' })}>✕</button>
                   </>}
                 </div>
               </div>
@@ -412,7 +479,7 @@ export function CalculatorTab() {
                 <div className="slot-controls" onClick={e => e.stopPropagation()}>
                   {state.flowers.length > 0 && <>
                     <button className="slot-btn" onClick={() => dispatch({ type: 'REMOVE_LAST', slotId: 'flower' })}>⌫</button>
-                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT', slotId: 'flower' })}>✕</button>
+                    <button className="slot-btn" onClick={() => dispatch({ type: 'CLEAR_SLOT',   slotId: 'flower' })}>✕</button>
                   </>}
                 </div>
               </div>
@@ -420,16 +487,24 @@ export function CalculatorTab() {
           })()}
         </div>
 
-        {/* Attente */}
-        <div id="wait-row">
-          <label htmlFor="wait-type">Attente unique :</label>
-          <select id="wait-type" value={ctx.waitType ?? ''} onChange={e => setCtx(c => ({ ...c, waitType: e.target.value || null }))}>
-            <option value="">Aucune</option>
-            <option value="edge">Au bord (attente du 3 sur 1-2, ou du 7 sur 8-9)</option>
-            <option value="closed">Au milieu (entre 2 tuiles, ex. 6-8 → 7)</option>
-            <option value="pair">Sur la paire (honneur uniquement)</option>
-          </select>
-        </div>
+        {/* Attente — masquée en 7 paires (pas d'attente unique applicable) */}
+        {!is7pairs && (
+          <div id="wait-row">
+            <label htmlFor="wait-type">Attente unique :</label>
+            <select id="wait-type" value={ctx.waitType ?? ''} onChange={e => setCtx(c => ({ ...c, waitType: e.target.value || null }))}>
+              <option value="">Aucune</option>
+              <option value="edge">Au bord (attente du 3 sur 1-2, ou du 7 sur 8-9)</option>
+              <option value="closed">Au milieu (entre 2 tuiles, ex. 6-8 → 7)</option>
+              <option value="pair">Sur la paire (honneur uniquement)</option>
+            </select>
+          </div>
+        )}
+
+        {is7pairs && (
+          <p style={{ fontSize: '0.82rem', color: '#888', margin: '4px 0 8px' }}>
+            La dernière paire saisie est considérée comme la tuile gagnante.
+          </p>
+        )}
 
         <div id="calc-buttons">
           <button id="calc-btn" onClick={calculateScore}>Calculer</button>
