@@ -94,6 +94,7 @@ test('[Expert 15 pts] Grande suite + Double Chow, exclusion Petite suite pure', 
 // [3R 4R 5R] · Caché[6R 7R 8R] · Pung[6R 6R 6R] · CachéPung[Sud×3] · Paire[Blanc×2] · ×2 fleurs
 // Tuile gagnante : Sud | écart | Est/Est
 // Expert → Petite suite pure +1 | Pung de Vent (Sud) +1 | 4 identiques (6R) +2 | Semi pure +6 | ×2 Fleurs = 12 pts
+// Référence : https://www.youtube.com/watch?v=NhA_tBCuDyw
 test('[Expert 12 pts] 4 identiques (6R) + Semi pure', () => {
   const R = v => makeTile('circle', v);
   const hand = makeHand({
