@@ -19,3 +19,6 @@ jobs:
             else
               git clone git@github.com:nylsnaej/mahjonghelper.git /opt/mahjonghelper
             fi
+            cd /opt/mahjonghelper
+            npm ci
+            npm run build

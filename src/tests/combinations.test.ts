@@ -1,0 +1,180 @@
+import { describe, test, expect } from 'vitest';
+import { scoreHand } from '../lib/combinations';
+import { makeTile } from '../lib/tiles';
+import type { Hand, ScoreItem, Tile } from '../types';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function makeHand(overrides: Partial<Hand>): Hand {
+  return {
+    groups: [], pair: { tiles: [], hidden: false }, flowers: [],
+    winTile: null, winBy: 'discard', waitType: null,
+    windRound: 'E', windPlayer: 'E',
+    isLastTile: false, isLastDiscard: false,
+    isStolenKong: false, isAfterKong: false, isLastExisting: false,
+    specialType: null,
+    ...overrides,
+  };
+}
+
+function expectHas(items: ScoreItem[], name: string, pts?: number) {
+  const found = items.find(i => i.name === name);
+  expect(found, `combinaison manquante : "${name}" dans [${items.map(i => i.name).join(', ')}]`).toBeDefined();
+  if (pts !== undefined && found) {
+    expect(found.pts, `"${name}" pts`).toBe(pts);
+  }
+}
+
+function expectNotHas(items: ScoreItem[], name: string) {
+  const found = items.find(i => i.name === name);
+  expect(found, `"${name}" ne devrait pas apparaître (règle d'exclusion)`).toBeUndefined();
+}
+
+// ── Mains validées par expert ─────────────────────────────────────────────────
+
+describe('Mains validées par expert', () => {
+  // ── #1 ────────────────────────────────────────────────────────────────────
+  // [1C 2C 3C] · [4R 5R 6R] · [4C 5C 6C] · Caché[7B 8B 9B] · Paire [2B 2B] · ×2 fleurs
+  // Tuile gagnante : 3C (bord) | écart | Est/Est
+  // Expert → Grande suite +8 | Tout Chow +2 | Double Chow +1 | Attente bord +1 | Sans honneurs +1 | ×2 Fleurs = 15 pts
+  // Règle d'exclusion : Double Chow consume [4C5C6C], Petite suite pure ne doit PAS apparaître
+  test('[Expert 15 pts] Grande suite + Double Chow, exclusion Petite suite pure', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: false },
+        { type: 'chow', tiles: [makeTile('circle',4),    makeTile('circle',5),    makeTile('circle',6)   ], hidden: false },
+        { type: 'chow', tiles: [makeTile('character',4), makeTile('character',5), makeTile('character',6)], hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',7),    makeTile('bamboo',8),    makeTile('bamboo',9)   ], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('bamboo',2), makeTile('bamboo',2)], hidden: false },
+      flowers: [makeTile('flower',1), makeTile('flower',2)],
+      winTile:  makeTile('character', 3),
+      waitType: 'edge',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(15);
+    expectHas(items, 'Grande suite',           8);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Double Chow',            1);
+    expectHas(items, 'Attente unique au bord', 1);
+    expectHas(items, 'Sans honneurs',          1);
+    expectNotHas(items, 'Petite suite pure');
+  });
+
+  // ── #2 ────────────────────────────────────────────────────────────────────
+  // [3R 4R 5R] · Caché[6R 7R 8R] · Pung[6R 6R 6R] · CachéPung[Sud×3] · Paire[Blanc×2] · ×2 fleurs
+  // Tuile gagnante : Sud | écart | Est/Est
+  // Expert → Petite suite pure +1 | Pung de Vent (Sud) +1 | 4 identiques (6R) +2 | Semi pure +6 | ×2 Fleurs = 12 pts
+  // Référence : https://www.youtube.com/watch?v=NhA_tBCuDyw
+  test('[Expert 12 pts] 4 identiques (6R) + Semi pure', () => {
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [R(3), R(4), R(5)],                                                              hidden: false },
+        { type: 'chow', tiles: [R(6), R(7), R(8)],                                                              hidden: true  },
+        { type: 'pung', tiles: [R(6), R(6), R(6)],                                                              hidden: false },
+        { type: 'pung', tiles: [makeTile('wind','S'), makeTile('wind','S'), makeTile('wind','S')],               hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('dragon','W'), makeTile('dragon','W')], hidden: false },
+      flowers: [makeTile('flower',1), makeTile('flower',2)],
+      winTile:  makeTile('wind', 'S'),
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(12);
+    expectHas(items, 'Petite suite pure',  1);
+    expectHas(items, 'Pung de Vent (Sud)', 1);
+    expectHas(items, '4 identiques (6R)', 2);
+    expectHas(items, 'Semi pure',          6);
+  });
+
+  // ── #3 ────────────────────────────────────────────────────────────────────
+  // Pung[7C×3] · Pung[3C×3] · CachéPung[Vert×3] · CachéPung[Rouge×3] · Paire[Est×2] · ×1 fleur
+  // Tuile gagnante : Rouge | écart | Est/Est
+  // "Deux Dragons" subsume les "Pung de Dragon" individuels
+  // Expert → Deux Dragons +6 | Deux Pungs cachés +2 | Tout Pung +6 | Semi pure +6 | Fleur +1 = 21 pts
+  // (l'expert avait oublié Deux Pungs cachés et annonçait 19 pts)
+  test('[Expert 21 pts] Deux Dragons subsume Pung de Dragon individuels', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [C(7), C(7), C(7)],                                                                hidden: false },
+        { type: 'pung', tiles: [C(3), C(3), C(3)],                                                                hidden: false },
+        { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G')],           hidden: true  },
+        { type: 'pung', tiles: [makeTile('dragon','R'), makeTile('dragon','R'), makeTile('dragon','R')],           hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('wind','E'), makeTile('wind','E')], hidden: false },
+      flowers: [makeTile('flower',1)],
+      winTile:  makeTile('dragon','R'),
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(21);
+    expectHas(items, 'Deux Dragons',      6);
+    expectHas(items, 'Deux Pungs cachés', 2);
+    expectHas(items, 'Tout Pung',         6);
+    expectHas(items, 'Semi pure',         6);
+    expectHas(items, 'Fleur',             1);
+    expectNotHas(items, 'Pung de Dragon (Vert)');
+    expectNotHas(items, 'Pung de Dragon (Rouge)');
+  });
+
+  // ── #4 ────────────────────────────────────────────────────────────────────
+  // Pung[6C×3] · Pung[9R×3] · Kong caché[6B×4] · Pung caché[1C×3] · Paire[2B×2]
+  // Tuile gagnante : 2B (attente sur la paire) | écart adverse | Est/Est
+  // Référence : http://www.ventdestmahjong.fr/fr/checkpoints.php combinaison 59
+  // Expert → Sans honneurs +1 | Pung d'extrémité (9R) +1 | Pung d'extrémité (1C) +1
+  //          | Attente sur la paire +1 | Double Pung +2 | Deux Pungs cachés +2
+  //          | Kong caché (6B) +2 | Tout Pung +6 = 16 pts
+  test('[Expert 16 pts] Tout Pung + Kong caché + Double Pung', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('character',6), makeTile('character',6), makeTile('character',6)], hidden: false },
+        { type: 'pung', tiles: [makeTile('circle',9),    makeTile('circle',9),    makeTile('circle',9)   ], hidden: false },
+        { type: 'kong', tiles: [makeTile('bamboo',6),    makeTile('bamboo',6),    makeTile('bamboo',6),    makeTile('bamboo',6)  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('character',1), makeTile('character',1), makeTile('character',1)], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('bamboo',2), makeTile('bamboo',2)], hidden: false },
+      winTile:  makeTile('bamboo', 2),
+      waitType: 'pair',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(16);
+    expectHas(items, 'Sans honneurs',                1);
+    expectHas(items, "Pung d'extrémité (9R)",        1);
+    expectHas(items, "Pung d'extrémité (1C)",        1);
+    expectHas(items, 'Attente unique sur la paire',  1);
+    expectHas(items, 'Double Pung',                  2);
+    expectHas(items, 'Deux Pungs cachés',            2);
+    expectHas(items, 'Kong caché (6B)',              2);
+    expectHas(items, 'Tout Pung',                    6);
+  });
+
+  // ── #5 ────────────────────────────────────────────────────────────────────
+  // Chow[1R 2R 3R] · Caché Chow[1B 2B 3B] · Caché Chow[2B 3B 4B] · Chow[1C 2C 3C] · Paire[3R 3R]
+  // Tuile gagnante : 3C (attente au bord) | écart adverse | Est/Est
+  // Référence : http://www.ventdestmahjong.fr/fr/checkpoints.php
+  // Exclusions PDF :
+  //   - "Sans honneurs" inclus par définition dans "Les quatre premiers" (PDF p.27)
+  //   - "Double Chow" exclu par "Triple Chows" (PDF pp.37-38, exemples)
+  // Expert → Attente au bord +1 | Tout Chow +2 | Triple Chows +8 | Les quatre premiers +12 = 23 pts
+  test('[Expert 23 pts] Les quatre premiers + Triple Chows, exclusions Sans honneurs + Double Chow', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('circle',1),    makeTile('circle',2),    makeTile('circle',3)   ], hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',1),    makeTile('bamboo',2),    makeTile('bamboo',3)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('bamboo',2),    makeTile('bamboo',3),    makeTile('bamboo',4)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: false },
+      ],
+      pair:    { tiles: [makeTile('circle',3), makeTile('circle',3)], hidden: false },
+      winTile:  makeTile('character', 3),
+      waitType: 'edge',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(23);
+    expectHas(items, 'Attente unique au bord', 1);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Triple Chows',           8);
+    expectHas(items, 'Les quatre premiers',   12);
+    expectNotHas(items, 'Sans honneurs');
+    expectNotHas(items, 'Double Chow');
+  });
+});
