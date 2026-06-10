@@ -220,7 +220,7 @@ export function scoreHand(hand: Hand): ScoreResult {
   });
 
   {
-    const allHidden = groups.every(g => g.hidden) && pair.hidden;
+    const allHidden = groups.every(g => g.hidden);
     if (allHidden && hand.winBy === 'discard' && hand.specialType !== '7pairs')
       add('Tout caché donné', 2);
   }
@@ -281,7 +281,7 @@ export function scoreHand(hand: Hand): ScoreResult {
   }
 
   {
-    const allHidden = groups.every(g => g.hidden) && pair.hidden;
+    const allHidden = groups.every(g => g.hidden);
     if (allHidden && hand.winBy === 'self') add('Tout caché tiré', 4);
   }
 

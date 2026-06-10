@@ -181,7 +181,9 @@ const GENERATORS = [
 ];
 
 export function generateHand(level: number): Hand {
-  const gen = GENERATORS[level];
+  // level 0 = mode "Tout" : pioche aléatoire parmi les 10 niveaux
+  const effectiveLevel = level === 0 ? randInt(1, 10) : level;
+  const gen = GENERATORS[effectiveLevel];
   if (!gen) throw new Error('Invalid level: ' + level);
   for (let attempt = 0; attempt < 20; attempt++) {
     const hand = gen();

@@ -149,6 +149,35 @@ describe('Mains validées par expert', () => {
   });
 
   // ── #5 ────────────────────────────────────────────────────────────────────
+  // Chow caché [6C 7C 8C] · Chow caché [6R 7R 8R] · Chow caché [6B 7B 8B] · Chow caché [1C 2C 3C] · Paire [4C 4C]
+  // Tuile gagnante : 3C (attente au bord) | écart | Est/Est
+  // Fix : Tout caché donné ne requiert pas pair.hidden
+  // Note : site de référence compte 13 pts (sans "Sans honneurs") — PDF ne confirme
+  //        pas cette exclusion (test #1 valide "Sans honneurs" avec "Tout Chow"). On garde 14 pts.
+  // Notre score → Triple Chows +8 | Tout Chow +2 | Tout caché donné +2 | Attente au bord +1 | Sans honneurs +1 = 14 pts
+  test('[14 pts] Triple Chows tout caché donné, fix pair.hidden', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('character',6), makeTile('character',7), makeTile('character',8)], hidden: true  },
+        { type: 'chow', tiles: [makeTile('circle',6),    makeTile('circle',7),    makeTile('circle',8)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('bamboo',6),    makeTile('bamboo',7),    makeTile('bamboo',8)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('character',4), makeTile('character',4)], hidden: false },
+      winTile:  makeTile('character', 3),
+      waitType: 'edge',
+      winBy:    'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(14);
+    expectHas(items, 'Triple Chows',           8);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Tout caché donné',       2);
+    expectHas(items, 'Attente unique au bord', 1);
+    expectHas(items, 'Sans honneurs',          1);
+  });
+
+  // ── #7 ────────────────────────────────────────────────────────────────────
   // Chow[1R 2R 3R] · Caché Chow[1B 2B 3B] · Caché Chow[2B 3B 4B] · Chow[1C 2C 3C] · Paire[3R 3R]
   // Tuile gagnante : 3C (attente au bord) | écart adverse | Est/Est
   // Référence : http://www.ventdestmahjong.fr/fr/checkpoints.php

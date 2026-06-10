@@ -8,7 +8,7 @@ import { handToText } from '../lib/handText';
 import type { Hand, ScoreResult } from '../types';
 
 const LEVEL_DESCS = [
-  '',
+  'Mode Tout : mains aléatoires parmi les 10 niveaux',
   'Combinaisons à 1 pt : Double Chow, familles',
   'Combinaisons à 1-2 pts : Pungs, Dragons',
   'Combinaisons à 2-4 pts : Kongs, Vents du joueur',
@@ -91,6 +91,11 @@ export function TrainingTab() {
       <div id="level-bar">
         <span>Niveau :</span>
         <div id="level-buttons">
+          <button
+            className={'level-btn' + (level === 0 ? ' active' : '')}
+            title={LEVEL_DESCS[0]}
+            onClick={() => handleLevelChange(0)}
+          >Tout</button>
           {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
             <button
               key={n}
