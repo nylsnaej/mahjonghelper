@@ -279,13 +279,20 @@ function scoreHand(hand) {
     add('Kong caché (' + tileLabel(g.tiles[0]) + ')', 2);
   });
 
-  // 4 identiques (4 tuiles identiques sans Kong déclaré)
-  // Géré comme une paire de paires dans les 7 paires — ici on cherche si un groupe a 4 tuiles identiques non déclarées en kong
-  // (dans notre générateur, cela peut arriver dans les 7 paires)
-  if (hand.specialType === '7pairs') {
-    const pairValues = hand.pairsList || [];
-    pairValues.forEach(p => {
-      if (p.count === 4) add('4 identiques (' + tileLabel(p.tile) + ')', 2);
+  // 4 identiques : 4 tuiles identiques dans la main sans Kong déclaré
+  // S'applique à toutes les mains (normale, 7 paires…)
+  {
+    const count = {};
+    const kongKeys = new Set(kongs.map(g => tileKey(g.tiles[0])));
+    allElems.forEach(g => g.tiles.forEach(t => {
+      const k = tileKey(t);
+      count[k] = (count[k] || 0) + 1;
+    }));
+    Object.entries(count).forEach(([k, n]) => {
+      if (n === 4 && !kongKeys.has(k)) {
+        const tile = allElems.flatMap(g => g.tiles).find(t => tileKey(t) === k);
+        if (tile) add('4 identiques (' + tileLabel(tile) + ')', 2);
+      }
     });
   }
 
