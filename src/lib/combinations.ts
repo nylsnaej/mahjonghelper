@@ -241,7 +241,7 @@ export function scoreHand(hand: Hand): ScoreResult {
     if (counted > 0) add('Double Pung', counted * 2);
   }
 
-  if (chows.length === 4 && !hasHonors) add('Tout Chow', 2);
+  if (chows.length + groups.filter(g => g.type === 'snake').length === 4 && !hasHonors) add('Tout Chow', 2);
 
   {
     const hiddenPungs = pungs.filter(g => g.hidden).length;

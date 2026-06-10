@@ -6,7 +6,7 @@ export interface Tile {
   value: number | string;
 }
 
-export type GroupType = 'chow' | 'pung' | 'kong' | 'pair7';
+export type GroupType = 'chow' | 'pung' | 'kong' | 'pair7' | 'snake';
 
 export interface Group {
   type: GroupType;

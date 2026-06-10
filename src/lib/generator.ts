@@ -174,6 +174,31 @@ function generateLevel10(): Hand {
   return baseHand({ groups: [g1, g2, g3, g4], pair: makePair(pairTile, true), winBy: rand(['self', 'discard'] as const), winTile: pairTile, waitType: pairWait(pairTile), isLastTile: Math.random() < 0.3, isLastExisting: Math.random() < 0.2, ...ctx });
 }
 
+function generateSnakeHand(): Hand {
+  const ctx = randomContext();
+  const fams = shuffle([...SUITS]);
+  const snakeGroups: Group[] = [
+    { type: 'snake', tiles: [suit(fams[0]!, 1), suit(fams[0]!, 4), suit(fams[0]!, 7)], hidden: true },
+    { type: 'snake', tiles: [suit(fams[1]!, 2), suit(fams[1]!, 5), suit(fams[1]!, 8)], hidden: true },
+    { type: 'snake', tiles: [suit(fams[2]!, 3), suit(fams[2]!, 6), suit(fams[2]!, 9)], hidden: true },
+  ];
+  const extraFam = rand([...SUITS]);
+  const isChow4 = Math.random() < 0.6;
+  const extra = isChow4
+    ? makeChow(extraFam, randInt(1, 7), rand([true, false]))
+    : makePung(suit(extraFam, randInt(1, 9)), rand([true, false]));
+  const pairTile = suit(rand([...SUITS]), randInt(1, 9));
+  return baseHand({
+    groups: [...snakeGroups, extra],
+    pair: makePair(pairTile, true),
+    winBy: rand(['self', 'discard'] as const),
+    winTile: pairTile,
+    waitType: pairWait(pairTile),
+    specialType: 'snake',
+    ...ctx,
+  });
+}
+
 const GENERATORS = [
   null,
   generateLevel1, generateLevel2, generateLevel3, generateLevel4, generateLevel5,
@@ -181,7 +206,8 @@ const GENERATORS = [
 ];
 
 export function generateHand(level: number): Hand {
-  // level 0 = mode "Tout" : pioche aléatoire parmi les 10 niveaux
+  // level 0 = mode "Tout" : pioche aléatoire parmi les 10 niveaux (10% chance serpentine)
+  if (level === 0 && Math.random() < 0.1) return generateSnakeHand();
   const effectiveLevel = level === 0 ? randInt(1, 10) : level;
   const gen = GENERATORS[effectiveLevel];
   if (!gen) throw new Error('Invalid level: ' + level);

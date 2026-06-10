@@ -8,7 +8,7 @@ import { handToText } from '../lib/handText';
 import type { Hand, ScoreResult } from '../types';
 
 const LEVEL_DESCS = [
-  'Mode Tout : mains aléatoires parmi les 10 niveaux',
+  'Mode Tout : niveaux 1-10 + suite serpentine',
   'Combinaisons à 1 pt : Double Chow, familles',
   'Combinaisons à 1-2 pts : Pungs, Dragons',
   'Combinaisons à 2-4 pts : Kongs, Vents du joueur',
@@ -145,6 +145,7 @@ export function TrainingTab() {
                     tiles={g.tiles}
                     isHiddenKong={isHiddenKong}
                     concealed={concealed}
+                    concealedLabel={g.type === 'snake' ? 'serpentin' : undefined}
                   />
                 );
               })}

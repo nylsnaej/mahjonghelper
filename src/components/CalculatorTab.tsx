@@ -2,18 +2,19 @@ import { useReducer, useState } from 'react';
 import { makeTile, tileSymbol, tileLabel, tilesEqual } from '../lib/tiles';
 import { scoreHand, getComboRef } from '../lib/combinations';
 import { handToText } from '../lib/handText';
-import type { Tile, Hand } from '../types';
+import type { Tile, Hand, SuitType } from '../types';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type CalcMode = 'standard' | '7pairs';
+type CalcMode = 'standard' | '7pairs' | 'snake';
 
 interface SlotGroup { tiles: Tile[]; hidden: boolean; }
 
 interface CalcState {
   mode: CalcMode;
-  groups: SlotGroup[];   // 4 slots en standard, 7 en 7pairs
-  pair: SlotGroup;       // utilisé seulement en standard
+  snakeSuits: [SuitType, SuitType, SuitType];
+  groups: SlotGroup[];   // 4 slots en standard, 7 en 7pairs, 4 en snake (0-2 auto)
+  pair: SlotGroup;       // utilisé seulement en standard/snake
   flowers: Tile[];
   activeSlot: string;
   lastTile: Tile | null;
@@ -28,6 +29,7 @@ type CalcAction =
   | { type: 'TOGGLE_HIDDEN'; slotId: string; hidden: boolean }
   | { type: 'SET_ACTIVE'; slotId: string }
   | { type: 'SET_MODE'; mode: CalcMode }
+  | { type: 'SET_SNAKE_SUIT'; idx: 0 | 1 | 2; suit: SuitType }
   | { type: 'RESET' };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -48,6 +50,20 @@ function detectType(tiles: Tile[]): string {
   return 'invalid';
 }
 
+function makeSnakeGroups(suits: [SuitType, SuitType, SuitType]): SlotGroup[] {
+  return [
+    { tiles: [makeTile(suits[0], 1), makeTile(suits[0], 4), makeTile(suits[0], 7)], hidden: true },
+    { tiles: [makeTile(suits[1], 2), makeTile(suits[1], 5), makeTile(suits[1], 8)], hidden: true },
+    { tiles: [makeTile(suits[2], 3), makeTile(suits[2], 6), makeTile(suits[2], 9)], hidden: true },
+  ];
+}
+
+function makeGroups(mode: CalcMode, snakeSuits?: [SuitType, SuitType, SuitType]): SlotGroup[] {
+  if (mode === '7pairs') return Array.from({ length: 7 }, () => ({ tiles: [], hidden: false }));
+  if (mode === 'snake') return [...makeSnakeGroups(snakeSuits!), { tiles: [], hidden: false }];
+  return Array.from({ length: 4 }, () => ({ tiles: [], hidden: false }));
+}
+
 function isGroupComplete(state: CalcState, slotId: string): boolean {
   if (slotId === 'flower') return false;
   if (slotId === 'pair') {
@@ -56,14 +72,16 @@ function isGroupComplete(state: CalcState, slotId: string): boolean {
   }
   const idx = +slotId[1]!;
   if (idx >= state.groups.length) return false;
+  // En snake mode, slots 0-2 sont toujours complets (auto-générés)
+  if (state.mode === 'snake' && idx < 3) return true;
   const t = detectType(state.groups[idx]!.tiles);
   return state.mode === '7pairs' ? t === 'pair_ok' : (t === 'chow' || t === 'pung' || t === 'kong');
 }
 
 function slotOrder(mode: CalcMode): string[] {
-  return mode === '7pairs'
-    ? ['g0','g1','g2','g3','g4','g5','g6']
-    : ['g0','g1','g2','g3','pair','flower'];
+  if (mode === '7pairs') return ['g0','g1','g2','g3','g4','g5','g6'];
+  if (mode === 'snake')  return ['g3','pair','flower'];
+  return ['g0','g1','g2','g3','pair','flower'];
 }
 
 function nextSlot(state: CalcState, current: string): string {
@@ -81,16 +99,13 @@ function typeLabel(t: string): string {
 const MAX_PER_TILE = 4;
 const MAX_FLOWER   = 1;
 
-function makeGroups(mode: CalcMode): SlotGroup[] {
-  const n = mode === '7pairs' ? 7 : 4;
-  return Array.from({ length: n }, () => ({ tiles: [], hidden: false }));
-}
-
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
 function initState(): CalcState {
+  const defaultSuits: [SuitType, SuitType, SuitType] = ['bamboo', 'circle', 'character'];
   return {
     mode: 'standard',
+    snakeSuits: defaultSuits,
     groups: makeGroups('standard'),
     pair: { tiles: [], hidden: false },
     flowers: [],
@@ -104,7 +119,20 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
 
     case 'SET_MODE': {
       if (action.mode === state.mode) return state;
-      return { ...initState(), mode: action.mode, groups: makeGroups(action.mode) };
+      const ss = state.snakeSuits;
+      const groups = action.mode === 'snake' ? makeGroups('snake', ss)
+                   : action.mode === '7pairs' ? makeGroups('7pairs')
+                   : makeGroups('standard');
+      const activeSlot = action.mode === 'snake' ? 'g3' : 'g0';
+      return { ...initState(), mode: action.mode, snakeSuits: ss, groups, activeSlot };
+    }
+
+    case 'SET_SNAKE_SUIT': {
+      const suits = [...state.snakeSuits] as [SuitType, SuitType, SuitType];
+      suits[action.idx] = action.suit;
+      const snakeSlots = makeSnakeGroups(suits);
+      const groups = state.groups.map((g, i) => i < 3 ? snakeSlots[i]! : g);
+      return { ...state, snakeSuits: suits, groups };
     }
 
     case 'ADD_TILE': {
@@ -126,6 +154,8 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
       }
 
       const gi = +slot[1]!;
+      // En snake mode, bloquer les slots serpentins 0-2
+      if (state.mode === 'snake' && gi < 3) return state;
       if (gi >= state.groups.length) return state;
       const g = state.groups[gi]!;
       const maxTiles = state.mode === '7pairs' ? 2 : 4;
@@ -142,6 +172,8 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
 
     case 'REMOVE_LAST': {
       const sid = action.slotId;
+      // En snake mode, bloquer les slots serpentins 0-2
+      if (state.mode === 'snake' && sid.startsWith('g') && +sid[1]! < 3) return state;
       const clearing = state.lastSlot === sid;
       const reset = clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {};
       if (sid === 'pair') {
@@ -157,6 +189,8 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
 
     case 'CLEAR_SLOT': {
       const sid = action.slotId;
+      // En snake mode, bloquer les slots serpentins 0-2
+      if (state.mode === 'snake' && sid.startsWith('g') && +sid[1]! < 3) return state;
       const clearing = state.lastSlot === sid;
       const reset = clearing ? { lastTile: null, lastSlot: null, lastIdx: null } : {};
       if (sid === 'pair') {
@@ -172,6 +206,8 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
 
     case 'TOGGLE_HIDDEN': {
       const sid = action.slotId;
+      // En snake mode, les slots serpentins 0-2 sont toujours cachés
+      if (state.mode === 'snake' && sid.startsWith('g') && +sid[1]! < 3) return state;
       if (sid === 'pair') return { ...state, pair: { ...state.pair, hidden: action.hidden } };
       const gi = +sid[1]!;
       const groups = state.groups.map((g, i) => i === gi ? { ...g, hidden: action.hidden } : g);
@@ -182,6 +218,9 @@ function calcReducer(state: CalcState, action: CalcAction): CalcState {
       return { ...state, activeSlot: action.slotId };
 
     case 'RESET':
+      if (state.mode === 'snake') {
+        return { ...initState(), mode: 'snake', snakeSuits: state.snakeSuits, groups: makeGroups('snake', state.snakeSuits), activeSlot: 'g3' };
+      }
       return { ...initState(), mode: state.mode, groups: makeGroups(state.mode) };
   }
 }
@@ -208,6 +247,7 @@ export function CalculatorTab() {
   const [copyLabel, setCopyLabel] = useState('Copier');
 
   const is7pairs = state.mode === '7pairs';
+  const isSnake  = state.mode === 'snake';
 
   function usageCount(tile: Tile): number {
     let n = 0;
@@ -219,6 +259,21 @@ export function CalculatorTab() {
 
   function detectWaitType(): string | null {
     if (is7pairs) return null;
+    if (isSnake) {
+      // Attente unique seulement sur g3 ou pair (pas les groupes serpentins)
+      const { lastSlot, lastIdx } = state;
+      if (!lastSlot || lastIdx === null) return null;
+      if (lastSlot === 'pair') return 'pair';
+      if (lastSlot !== 'g3') return null;  // pas sur serpentin
+      const g = state.groups[3];
+      if (!g || detectType(g.tiles) !== 'chow') return null;
+      const vals = g.tiles.map(t => t.value as number).sort((a, b) => a - b);
+      const winVal = g.tiles[lastIdx]!.value as number;
+      if (winVal === vals[1]) return 'closed';
+      if (winVal === vals[2] && vals[0] === 1) return 'edge';
+      if (winVal === vals[0] && vals[2] === 9) return 'edge';
+      return null;
+    }
     const { lastSlot, lastIdx } = state;
     if (!lastSlot || lastIdx === null) return null;
     if (lastSlot === 'pair') return 'pair';
@@ -256,6 +311,41 @@ export function CalculatorTab() {
         isLastTile: ctx.isLastTile, isLastDiscard: ctx.isLastDiscard,
         isStolenKong: ctx.isStolenKong, isAfterKong: ctx.isAfterKong, isLastExisting: ctx.isLastExisting,
         specialType: '7pairs',
+      };
+      const { items, total } = scoreHand(hand);
+      setResult({ ok: true, hand, items, total });
+      return;
+    }
+
+    if (isSnake) {
+      if (new Set(state.snakeSuits).size !== 3) {
+        setResult({ ok: false, error: 'Les 3 familles de la serpentine doivent être différentes.' });
+        return;
+      }
+      const g4 = state.groups[3]!;
+      const g4type = detectType(g4.tiles);
+      if (!(['chow','pung','kong'] as string[]).includes(g4type)) {
+        setResult({ ok: false, error: 'Le 4e groupe doit être un Chow, Pung ou Kong complet.' });
+        return;
+      }
+      if (detectType(state.pair.tiles) !== 'pair_ok') {
+        setResult({ ok: false, error: 'La paire doit contenir 2 tuiles identiques.' });
+        return;
+      }
+      const snakeGroups: Hand['groups'] = state.groups.slice(0,3).map(g => ({
+        type: 'snake' as const, tiles: g.tiles, hidden: true,
+      }));
+      const hand: Hand = {
+        groups: [...snakeGroups, { type: g4type as 'chow'|'pung'|'kong', tiles: g4.tiles, hidden: g4.hidden }],
+        pair: state.pair,
+        flowers: state.flowers,
+        winTile: state.lastTile ?? state.pair.tiles[1] ?? null,
+        winBy: ctx.winBy,
+        waitType: (ctx.waitType ?? detectWaitType()) as 'edge'|'closed'|'pair'|null,
+        windRound: ctx.windRound, windPlayer: ctx.windPlayer,
+        isLastTile: ctx.isLastTile, isLastDiscard: ctx.isLastDiscard,
+        isStolenKong: ctx.isStolenKong, isAfterKong: ctx.isAfterKong, isLastExisting: ctx.isLastExisting,
+        specialType: 'snake',
       };
       const { items, total } = scoreHand(hand);
       setResult({ ok: true, hand, items, total });
@@ -396,19 +486,56 @@ export function CalculatorTab() {
 
         {/* Toggle mode */}
         <div id="calc-mode-row">
-          <button className={'mode-btn' + (!is7pairs ? ' active' : '')} onClick={() => switchMode('standard')}>Standard</button>
+          <button className={'mode-btn' + (!is7pairs && !isSnake ? ' active' : '')} onClick={() => switchMode('standard')}>Standard</button>
           <button className={'mode-btn' + ( is7pairs ? ' active' : '')} onClick={() => switchMode('7pairs')}>7 Paires</button>
+          <button className={'mode-btn' + ( isSnake  ? ' active' : '')} onClick={() => switchMode('snake')}>Serpentine</button>
         </div>
 
         <div id="hand-builder">
+          {/* Section serpentine : sélection des familles */}
+          {isSnake && (
+            <div id="snake-suits-section">
+              <div className="snake-suit-note">Groupes serpentins (cachés, auto-générés) :</div>
+              {([0, 1, 2] as const).map(idx => {
+                const values = [[1,4,7],[2,5,8],[3,6,9]][idx]!;
+                return (
+                  <div key={idx} className="snake-suit-row">
+                    <span className="snake-suit-label">{values.join('-')} :</span>
+                    <div className="snake-suit-btns">
+                      {(['bamboo','circle','character'] as SuitType[]).map(s => {
+                        const usedElsewhere = state.snakeSuits.some((ss, i) => i !== idx && ss === s);
+                        const active = state.snakeSuits[idx] === s;
+                        return (
+                          <button key={s}
+                            className={'suit-btn' + (active ? ' active' : '') + (usedElsewhere ? ' disabled' : '')}
+                            disabled={usedElsewhere}
+                            onClick={() => dispatch({ type: 'SET_SNAKE_SUIT', idx, suit: s })}>
+                            {s === 'bamboo' ? 'Bambou' : s === 'circle' ? 'Rond' : 'Caract.'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="snake-tiles-preview">
+                      {state.groups[idx]!.tiles.map((t, i) => (
+                        <SlotTile key={i} tile={t} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {state.groups.map((g, i) => {
             const sid   = 'g' + i;
+            // En mode snake, sauter les slots 0-2 (auto-générés, affichés dans la section serpentine)
+            if (isSnake && i < 3) return null;
             const t     = detectType(g.tiles);
             const compl = is7pairs ? t === 'pair_ok' : (t === 'chow' || t === 'pung' || t === 'kong');
             const inv   = t === 'invalid';
             const act   = state.activeSlot === sid;
             const cls   = ['builder-slot', act?'slot-active':'', compl?'slot-complete':'', inv?'slot-invalid':''].filter(Boolean).join(' ');
-            const label = is7pairs ? `Paire ${i+1}` : `Groupe ${i+1}`;
+            const label = isSnake ? '4e groupe (régulier)' : is7pairs ? `Paire ${i+1}` : `Groupe ${i+1}`;
             return (
               <div key={sid} className={cls} onClick={() => dispatch({ type: 'SET_ACTIVE', slotId: sid })}>
                 <div className="slot-label">
@@ -437,7 +564,7 @@ export function CalculatorTab() {
             );
           })}
 
-          {/* Paire — seulement en mode standard */}
+          {/* Paire — seulement en mode standard ou snake */}
           {!is7pairs && (() => {
             const pairT   = detectType(state.pair.tiles);
             const pairOk  = pairT === 'pair_ok';
@@ -490,6 +617,7 @@ export function CalculatorTab() {
         {/* Attente — masquée en 7 paires (pas d'attente unique applicable) */}
         {!is7pairs && (
           <div id="wait-row">
+            {isSnake && <p style={{ fontSize:'0.8rem', color:'#888', margin:'0 0 4px' }}>Attente sur le 4e groupe ou la paire uniquement</p>}
             <label htmlFor="wait-type">Attente unique :</label>
             <select id="wait-type" value={ctx.waitType ?? ''} onChange={e => setCtx(c => ({ ...c, waitType: e.target.value || null }))}>
               <option value="">Aucune</option>

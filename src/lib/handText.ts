@@ -25,10 +25,11 @@ export function handToText(hand: Hand, score: ScoreResult, level: number | strin
     const allPairs = [...hand.groups.map(g => g.tiles), hand.pair.tiles];
     lines.push('Sept paires [' + allPairs.map(p => p.map(tileLabel).join('')).join(' / ') + ']');
   } else {
-    const typeName: Record<string, string> = { chow: 'Chow', pung: 'Pung', kong: 'Kong', pair7: 'Paire' };
+    const typeName: Record<string, string> = { chow: 'Chow', pung: 'Pung', kong: 'Kong', pair7: 'Paire', snake: 'Serpentine' };
     const parts = hand.groups.map(g => {
       const t = typeName[g.type] ?? g.type;
-      return t + (g.hidden ? ' caché' : '') + ' [' + g.tiles.map(tileLabel).join(' ') + ']';
+      const hiddenSuffix = g.hidden && g.type !== 'snake' ? ' caché' : '';
+      return t + hiddenSuffix + ' [' + g.tiles.map(tileLabel).join(' ') + ']';
     });
     parts.push('Paire [' + hand.pair.tiles.map(tileLabel).join(' ') + ']');
     if (hand.flowers.length) parts.push('Fleur ×' + hand.flowers.length);

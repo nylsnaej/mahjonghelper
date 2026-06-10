@@ -5,10 +5,11 @@ interface Props {
   tiles: Tile[];
   isHiddenKong?: boolean;
   concealed?: boolean;
+  concealedLabel?: string;
   winningIndex?: number;
 }
 
-export function TileGroup({ tiles, isHiddenKong = false, concealed = false, winningIndex }: Props) {
+export function TileGroup({ tiles, isHiddenKong = false, concealed = false, concealedLabel, winningIndex }: Props) {
   const groupCls = 'tile-group' + (isHiddenKong ? ' kong-hidden' : '');
 
   const inner = (
@@ -25,7 +26,7 @@ export function TileGroup({ tiles, isHiddenKong = false, concealed = false, winn
     return (
       <div className="group-concealed-wrap">
         {inner}
-        <span className="group-concealed-lbl">caché</span>
+        <span className="group-concealed-lbl">{concealedLabel ?? 'caché'}</span>
       </div>
     );
   }
