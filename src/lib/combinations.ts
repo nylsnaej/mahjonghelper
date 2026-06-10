@@ -649,6 +649,10 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   ];
   if (excludesSansHonneurs.some(has)) rm('Sans honneurs');
 
+  // PDF p.12 — Tout ordinaire
+  // → requiert « aucune tuile d'Honneur ni d'extrémités » : Sans honneurs est un sous-ensemble
+  if (has('Tout ordinaire')) rm('Sans honneurs');
+
   // PDF p.38 — Les trois du milieu
   // → « Les points pour « Sans honneur » et « Tout ordinaire » sont inclus »
   if (has('Les trois du milieu')) rm('Tout ordinaire');

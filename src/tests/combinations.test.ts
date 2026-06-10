@@ -206,4 +206,32 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Sans honneurs');
     expectNotHas(items, 'Double Chow');
   });
+
+  // ── #8 ────────────────────────────────────────────────────────────────────
+  // Pung [4B 4B 4B] · Pung [6C 6C 6C] · Pung caché [7B 7B 7B] · Pung caché [2B 2B 2B] · Paire [4R 4R]
+  // Tuile gagnante : 2B | écart | Est/Est
+  // Référence : ventdestmahjong.fr exemple 233 (Tout Pung 6 + Tout ordinaire 2 = 8)
+  // Note : site de référence omet "Deux Pungs cachés" — PDF p.11 dit explicitement
+  //        « peut se cumuler avec les points des Pungs » → on le compte.
+  //        "Sans honneurs" exclu par "Tout ordinaire" (PDF p.12, sous-ensemble).
+  // Notre score → Tout Pung +6 | Tout ordinaire +2 | Deux Pungs cachés +2 = 10 pts
+  test('[10 pts] Tout Pung + Tout ordinaire, exclusion Sans honneurs', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('bamboo',4),    makeTile('bamboo',4),    makeTile('bamboo',4)   ], hidden: false },
+        { type: 'pung', tiles: [makeTile('character',6), makeTile('character',6), makeTile('character',6)], hidden: false },
+        { type: 'pung', tiles: [makeTile('bamboo',7),    makeTile('bamboo',7),    makeTile('bamboo',7)   ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('bamboo',2),    makeTile('bamboo',2),    makeTile('bamboo',2)   ], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('circle',4), makeTile('circle',4)], hidden: false },
+      winTile:  makeTile('bamboo', 2),
+      winBy:    'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(10);
+    expectHas(items, 'Tout Pung',         6);
+    expectHas(items, 'Tout ordinaire',    2);
+    expectHas(items, 'Deux Pungs cachés', 2);
+    expectNotHas(items, 'Sans honneurs');
+  });
 });
