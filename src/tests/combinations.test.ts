@@ -234,4 +234,33 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Deux Pungs cachés', 2);
     expectNotHas(items, 'Sans honneurs');
   });
+
+  // ── #9 ────────────────────────────────────────────────────────────────────
+  // Pung [Blanc×3] · Pung caché [3R×3] · Chow [7R 8R 9R] · Chow caché [7R 8R 9R] · Paire [Rouge×2]
+  // Tuile gagnante : 8R (attente au milieu) | écart | Est/Sud
+  // Confirmé par ventdestmahjong.fr
+  // Score → Double Chow pur +1 | Attente unique au milieu +1 | Pung de Dragon (Blanc) +2 | Semi pure +6 = 10 pts
+  test('[Expert 10 pts] Semi pure + Double Chow pur + Pung de Dragon (Blanc)', () => {
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('dragon','W'), makeTile('dragon','W'), makeTile('dragon','W')], hidden: false },
+        { type: 'pung', tiles: [R(3), R(3), R(3)],                                                      hidden: true  },
+        { type: 'chow', tiles: [R(7), R(8), R(9)],                                                      hidden: false },
+        { type: 'chow', tiles: [R(7), R(8), R(9)],                                                      hidden: true  },
+      ],
+      pair:      { tiles: [makeTile('dragon','R'), makeTile('dragon','R')], hidden: false },
+      winTile:   R(8),
+      waitType:  'closed',
+      winBy:     'discard',
+      windRound: 'E',
+      windPlayer: 'S',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(10);
+    expectHas(items, 'Double Chow pur',         1);
+    expectHas(items, 'Attente unique au milieu', 1);
+    expectHas(items, 'Pung de Dragon (Blanc)',   2);
+    expectHas(items, 'Semi pure',               6);
+  });
 });
