@@ -357,4 +357,37 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Grande suite pure',      16);
     expectNotHas(items, "Deux Chows purs d'extrémité");
   });
+
+  // ── #13 ───────────────────────────────────────────────────────────────────
+  // Pung [6B×3] · Kong [6C×4] · Kong caché [5R×4] · Chow caché [3C 4C 5C] · Paire [8C×2]
+  // Tuile gagnante : 4C (attente au milieu) | écart | Est/Est
+  // Référence : ventdestmahjong.fr main 238
+  // PDF p.17 : Kong caché + Kong exposé exclut Kong exposé (+1) et Kong caché (+2) individuels
+  // Score → Attente au milieu +1 | Double Pung +2 | Tout ordinaire +2 | Kong caché + Kong exposé +6 = 11 pts
+  test('[Expert 11 pts] Kong caché + Kong exposé exclut bonus individuels', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [B(6), B(6), B(6)],                   hidden: false },
+        { type: 'kong', tiles: [R(6), R(6), R(6), R(6)],             hidden: false },
+        { type: 'kong', tiles: [R(5), R(5), R(5), R(5)],             hidden: true  },
+        { type: 'chow', tiles: [C(3), C(4), C(5)],                   hidden: true  },
+      ],
+      pair:    { tiles: [C(8), C(8)], hidden: false },
+      winTile:  C(4),
+      waitType: 'closed',
+      winBy:    'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(11);
+    expectHas(items, 'Attente unique au milieu',  1);
+    expectHas(items, 'Double Pung',               2);
+    expectHas(items, 'Tout ordinaire',            2);
+    expectHas(items, 'Kong caché + Kong exposé',  6);
+    expectNotHas(items, 'Kong exposé (6R)');
+    expectNotHas(items, 'Kong caché (5R)');
+    expectNotHas(items, 'Sans honneurs');
+  });
 });

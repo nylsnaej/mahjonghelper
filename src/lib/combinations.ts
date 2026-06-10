@@ -691,6 +691,16 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
     rm('Triple Chow pur'); rm('Double Chow pur'); rmPfx('4 identiques');
   }
 
+  // PDF p.17 — Kong caché + Kong exposé
+  // PDF p.14 — Deux Kongs exposés
+  // PDF p.20 — 2 Kongs cachés
+  // → « peut se cumuler avec les points des Kongs » = bonus de valeur (Pung d'extrémité,
+  //   Pung de Dragon…), PAS les bonus structurels Kong exposé/Kong caché.
+  //   Aucun exemple PDF ne les cumule.
+  if (has('Kong caché + Kong exposé')) { rmPfx('Kong exposé ('); rmPfx('Kong caché ('); }
+  if (has('Deux Kongs exposés'))        rmPfx('Kong exposé (');
+  if (has('2 Kongs cachés'))            rmPfx('Kong caché (');
+
   // PDF p.16 — Tout exposé
   // → « le point pour attente sur la paire est inclus »
   if (has('Tout exposé')) rm('Attente unique sur la paire');

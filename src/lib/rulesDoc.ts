@@ -107,6 +107,25 @@ export const RULES_DOC: RuleDoc[] = [
   },
 
   {
+    id: 'kong-combos-excl-bonus-individuels',
+    rule: '"Kong caché + Kong exposé", "Deux Kongs exposés", "2 Kongs cachés" excluent les bonus individuels Kong exposé/Kong caché',
+    status: 'confirmed',
+    sources: [
+      {
+        type: 'pdf',
+        ref: 'MCR_Combinaisons.pdf p.17 (Kong caché + Kong exposé), p.14 (Deux Kongs exposés), p.20 (2 Kongs cachés)',
+        quote: '« peut se cumuler avec les points des Kongs » — tous les exemples PDF cumulent uniquement les bonus de valeur (Pung d\'extrémité, Pung de Dragon…), jamais les bonus structurels Kong exposé (+1) ou Kong caché (+2).',
+      },
+      {
+        type: 'website',
+        ref: 'ventdestmahjong.fr main 238',
+        quote: 'Calcul validé sans "Kong exposé" ni "Kong caché" individuels.',
+      },
+    ],
+    note: '"Peut se cumuler avec les points des Kongs" désigne les bonus liés à la VALEUR des tuiles (extrémité, dragon…), pas les bonus structurels. Note : "Tout Pung" exemple 3 PDF p.15 montre que "Kong exposé" EST cumulable avec "Tout Pung" — seuls les combos de kongs l\'excluent.',
+  },
+
+  {
     id: 'grande-suite-pure-excl-deux-chows-extremite',
     rule: '"Grande suite pure" exclut "Deux Chows purs d\'extrémité"',
     status: 'confirmed',
