@@ -695,6 +695,11 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   // → « le point pour attente sur la paire est inclus »
   if (has('Tout exposé')) rm('Attente unique sur la paire');
 
+  // PDF p.29 — Grande suite pure (exemple 1)
+  // → la main contient nécessairement 1-2-3 et 7-8-9 de la même famille,
+  //   mais l'exemple ne liste pas "Deux Chows purs d'extrémité"
+  if (has('Grande suite pure')) rm("Deux Chows purs d'extrémité");
+
   // PDF p.19 + exemples pp.37-38 — Triple Chows exclut Double Chow (familles diff.)
   // Tous les exemples PDF avec Triple Chows montrent uniquement Double Chow PUR
   // en complément, jamais Double Chow (familles différentes).

@@ -323,4 +323,38 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Attente unique sur la paire');
     expectNotHas(items, 'Sans honneurs');
   });
+
+  // ── #12 ───────────────────────────────────────────────────────────────────
+  // Chow [1B 2B 3B] · Chow caché [4R 5R 6R] · Chow caché [7B 8B 9B] · Chow [4B 5B 6B] · Paire [1B 1B]
+  // Tuile gagnante : 5B (attente au milieu) | écart | Est/Est
+  // Référence : ventdestmahjong.fr main 217
+  // Exclusion PDF p.29 : Grande suite pure exclut Deux Chows purs d'extrémité (exemple 1)
+  // Note : site de référence omet aussi "Sans honneurs" — PDF p.29 exemple 1 le compte → on garde
+  // Score → Double Chow +1 | Une famille absente +1 | Sans honneurs +1 | Attente au milieu +1
+  //          | Tout Chow +2 | Grande suite pure +16 = 22 pts
+  test('[22 pts] Grande suite pure, exclusion Deux Chows purs d\'extrémité', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [B(1), B(2), B(3)], hidden: false },
+        { type: 'chow', tiles: [R(4), R(5), R(6)], hidden: true  },
+        { type: 'chow', tiles: [B(7), B(8), B(9)], hidden: true  },
+        { type: 'chow', tiles: [B(4), B(5), B(6)], hidden: false },
+      ],
+      pair:    { tiles: [B(1), B(1)], hidden: false },
+      winTile:  B(5),
+      waitType: 'closed',
+      winBy:    'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(22);
+    expectHas(items, 'Double Chow',            1);
+    expectHas(items, 'Une famille absente',     1);
+    expectHas(items, 'Sans honneurs',           1);
+    expectHas(items, 'Attente unique au milieu',1);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Grande suite pure',      16);
+    expectNotHas(items, "Deux Chows purs d'extrémité");
+  });
 });

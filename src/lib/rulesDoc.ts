@@ -107,6 +107,25 @@ export const RULES_DOC: RuleDoc[] = [
   },
 
   {
+    id: 'grande-suite-pure-excl-deux-chows-extremite',
+    rule: '"Grande suite pure" exclut "Deux Chows purs d\'extrémité"',
+    status: 'confirmed',
+    sources: [
+      {
+        type: 'pdf',
+        ref: 'MCR_Combinaisons.pdf p.29 exemple 1 (FFMJ Mai 2013)',
+        quote: 'L\'exemple de Grande suite pure contient nécessairement 1-2-3 et 7-8-9 de la même famille, mais n\'y liste pas "Deux Chows purs d\'extrémité".',
+      },
+      {
+        type: 'website',
+        ref: 'ventdestmahjong.fr main 217',
+        quote: 'Calcul validé sans "Deux Chows purs d\'extrémité".',
+      },
+    ],
+    note: 'Grande suite pure inclut par définition les suites 1-2-3 et 7-8-9 dans la même famille — les compter séparément serait du double comptage. "Sans honneurs" reste comptable (PDF p.29 exemple 1 le montre explicitement).',
+  },
+
+  {
     id: 'tout-expose-excl-attente-paire',
     rule: '"Tout exposé" exclut "Attente unique sur la paire"',
     status: 'confirmed',
