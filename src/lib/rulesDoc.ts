@@ -41,16 +41,26 @@ export const RULES_DOC: RuleDoc[] = [
 
   {
     id: 'tout-chow-excl-sans-honneurs',
-    rule: '"Tout Chow" exclut "Sans honneurs" (via Les quatre premiers / Les trois premiers / etc.)',
+    rule: '"Tout Chow" exclut "Sans honneurs"',
     status: 'confirmed',
     sources: [
       {
         type: 'pdf',
         ref: 'MCR_Combinaisons.pdf p.11 (FFMJ Mai 2013)',
-        quote: '« Le point pour « pas d\'honneur » est inclus par définition dans ce cumul de combinaisons »',
+        quote: '« Tout Chows : une main composée de 4 Chows et d\'une paire, avec uniquement les 3 familles, sans les honneurs » + « Le point pour « pas d\'honneur » est inclus par définition »',
+      },
+      {
+        type: 'pdf',
+        ref: 'MCR_Combinaisons.pdf p.29 exemples 1 et 2 — Grande suite pure',
+        quote: 'Exemple 1 (sans Tout Chow) : compte "Pas d\'honneur". Exemple 2 (avec Tout Chow) : ne compte PAS "Pas d\'honneur". Preuve par comparaison.',
+      },
+      {
+        type: 'website',
+        ref: 'ventdestmahjong.fr mains 217, Triple Chows, et test #14',
+        quote: 'Calcul validé sans "Sans honneurs" quand "Tout Chow" est présent.',
       },
     ],
-    note: 'La remarque PDF vise les mains avec Les quatre premiers + Tout Chow. L\'exclusion s\'applique via Les quatre premiers, pas via Tout Chow seul. Test #1 confirme : Tout Chow seul PEUT coexister avec Sans honneurs (15 pts validés par expert).',
+    note: 'Tout Chow requiert par définition l\'absence d\'honneurs. Note : l\'expert initial du test #1 comptait +1 Sans honneurs avec Tout Chow — c\'était une erreur. Les tests #1, #5, #12 ont été corrigés en conséquence.',
   },
 
   // ── Exclusions "Double Chow" ──────────────────────────────────────────────

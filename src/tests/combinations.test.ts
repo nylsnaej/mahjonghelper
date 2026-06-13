@@ -36,9 +36,10 @@ describe('Mains validées par expert', () => {
   // ── #1 ────────────────────────────────────────────────────────────────────
   // [1C 2C 3C] · [4R 5R 6R] · [4C 5C 6C] · Caché[7B 8B 9B] · Paire [2B 2B] · ×2 fleurs
   // Tuile gagnante : 3C (bord) | écart | Est/Est
-  // Expert → Grande suite +8 | Tout Chow +2 | Double Chow +1 | Attente bord +1 | Sans honneurs +1 | ×2 Fleurs = 15 pts
   // Règle d'exclusion : Double Chow consume [4C5C6C], Petite suite pure ne doit PAS apparaître
-  test('[Expert 15 pts] Grande suite + Double Chow, exclusion Petite suite pure', () => {
+  // Sans honneurs exclu par Tout Chow (PDF p.11)
+  // Score → Grande suite +8 | Tout Chow +2 | Double Chow +1 | Attente bord +1 | ×2 Fleurs = 14 pts
+  test('[14 pts] Grande suite + Double Chow, exclusion Petite suite pure + Sans honneurs', () => {
     const hand = makeHand({
       groups: [
         { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: false },
@@ -52,12 +53,12 @@ describe('Mains validées par expert', () => {
       waitType: 'edge',
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(15);
+    expect(total).toBe(14);
     expectHas(items, 'Grande suite',           8);
     expectHas(items, 'Tout Chow',              2);
     expectHas(items, 'Double Chow',            1);
     expectHas(items, 'Attente unique au bord', 1);
-    expectHas(items, 'Sans honneurs',          1);
+    expectNotHas(items, 'Sans honneurs');
     expectNotHas(items, 'Petite suite pure');
   });
 
@@ -152,10 +153,9 @@ describe('Mains validées par expert', () => {
   // Chow caché [6C 7C 8C] · Chow caché [6R 7R 8R] · Chow caché [6B 7B 8B] · Chow caché [1C 2C 3C] · Paire [4C 4C]
   // Tuile gagnante : 3C (attente au bord) | écart | Est/Est
   // Fix : Tout caché donné ne requiert pas pair.hidden
-  // Note : site de référence compte 13 pts (sans "Sans honneurs") — PDF ne confirme
-  //        pas cette exclusion (test #1 valide "Sans honneurs" avec "Tout Chow"). On garde 14 pts.
-  // Notre score → Triple Chows +8 | Tout Chow +2 | Tout caché donné +2 | Attente au bord +1 | Sans honneurs +1 = 14 pts
-  test('[14 pts] Triple Chows tout caché donné, fix pair.hidden', () => {
+  // Sans honneurs exclu par Tout Chow (PDF p.11) — site de référence (13 pts) était correct
+  // Score → Triple Chows +8 | Tout Chow +2 | Tout caché donné +2 | Attente au bord +1 = 13 pts
+  test('[13 pts] Triple Chows tout caché donné, Sans honneurs exclu par Tout Chow', () => {
     const hand = makeHand({
       groups: [
         { type: 'chow', tiles: [makeTile('character',6), makeTile('character',7), makeTile('character',8)], hidden: true  },
@@ -169,12 +169,12 @@ describe('Mains validées par expert', () => {
       winBy:    'discard',
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(14);
+    expect(total).toBe(13);
     expectHas(items, 'Triple Chows',           8);
     expectHas(items, 'Tout Chow',              2);
     expectHas(items, 'Tout caché donné',       2);
     expectHas(items, 'Attente unique au bord', 1);
-    expectHas(items, 'Sans honneurs',          1);
+    expectNotHas(items, 'Sans honneurs');
   });
 
   // ── #7 ────────────────────────────────────────────────────────────────────
@@ -327,12 +327,12 @@ describe('Mains validées par expert', () => {
   // ── #12 ───────────────────────────────────────────────────────────────────
   // Chow [1B 2B 3B] · Chow caché [4R 5R 6R] · Chow caché [7B 8B 9B] · Chow [4B 5B 6B] · Paire [1B 1B]
   // Tuile gagnante : 5B (attente au milieu) | écart | Est/Est
-  // Référence : ventdestmahjong.fr main 217
-  // Exclusion PDF p.29 : Grande suite pure exclut Deux Chows purs d'extrémité (exemple 1)
-  // Note : site de référence omet aussi "Sans honneurs" — PDF p.29 exemple 1 le compte → on garde
-  // Score → Double Chow +1 | Une famille absente +1 | Sans honneurs +1 | Attente au milieu +1
-  //          | Tout Chow +2 | Grande suite pure +16 = 22 pts
-  test('[22 pts] Grande suite pure, exclusion Deux Chows purs d\'extrémité', () => {
+  // Référence : ventdestmahjong.fr main 217 (21 pts — était correct)
+  // Exclusions : Grande suite pure exclut Deux Chows purs d'extrémité (PDF p.29 ex.1)
+  //              Tout Chow exclut Sans honneurs (PDF p.11) — site de référence avait raison
+  // Score → Double Chow +1 | Une famille absente +1 | Attente au milieu +1
+  //          | Tout Chow +2 | Grande suite pure +16 = 21 pts
+  test('[Expert 21 pts] Grande suite pure, exclusions Deux Chows d\'extrémité + Sans honneurs', () => {
     const B = (v: number): Tile => makeTile('bamboo', v);
     const R = (v: number): Tile => makeTile('circle', v);
     const hand = makeHand({
@@ -348,13 +348,13 @@ describe('Mains validées par expert', () => {
       winBy:    'discard',
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(22);
+    expect(total).toBe(21);
     expectHas(items, 'Double Chow',            1);
     expectHas(items, 'Une famille absente',     1);
-    expectHas(items, 'Sans honneurs',           1);
     expectHas(items, 'Attente unique au milieu',1);
     expectHas(items, 'Tout Chow',              2);
     expectHas(items, 'Grande suite pure',      16);
+    expectNotHas(items, 'Sans honneurs');
     expectNotHas(items, "Deux Chows purs d'extrémité");
   });
 
@@ -389,5 +389,36 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Kong exposé (6R)');
     expectNotHas(items, 'Kong caché (5R)');
     expectNotHas(items, 'Sans honneurs');
+  });
+
+  // ── #14 ───────────────────────────────────────────────────────────────────
+  // Chow [3R 4R 5R] · Chow [7B 8B 9B] · Chow [7R 8R 9R] · Chow caché [7C 8C 9C] · Paire [3B 3B]
+  // Tuile gagnante : 8C (attente au milieu) | écart | Est/Sud
+  // Tout Chow exclut Sans honneurs (PDF p.11)
+  // Score → Triple Chows +8 | Tout Chow +2 | Attente au milieu +1 = 11 pts
+  test('[Expert 11 pts] Triple Chows + Tout Chow, Sans honneurs exclu', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [R(3), R(4), R(5)], hidden: false },
+        { type: 'chow', tiles: [B(7), B(8), B(9)], hidden: false },
+        { type: 'chow', tiles: [R(7), R(8), R(9)], hidden: false },
+        { type: 'chow', tiles: [C(7), C(8), C(9)], hidden: true  },
+      ],
+      pair:      { tiles: [B(3), B(3)], hidden: false },
+      winTile:   C(8),
+      waitType:  'closed',
+      winBy:     'discard',
+      windPlayer: 'S',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(11);
+    expectHas(items, 'Triple Chows',           8);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Attente unique au milieu',1);
+    expectNotHas(items, 'Sans honneurs');
+    expectNotHas(items, 'Double Chow');
   });
 });

@@ -649,6 +649,13 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   ];
   if (excludesSansHonneurs.some(has)) rm('Sans honneurs');
 
+  // PDF p.11 — Tout Chow
+  // → définition : « 4 Chows et une paire, avec uniquement les 3 familles, sans les honneurs »
+  //   + remarque : « Le point pour « pas d'honneur » est inclus par définition »
+  //   Confirmé par PDF p.29 : exemple Grande suite pure avec Tout Chow ne liste pas Pas d'honneur,
+  //   exemple sans Tout Chow le liste. ventdestmahjong.fr mains 217, main Triple Chows.
+  if (has('Tout Chow')) rm('Sans honneurs');
+
   // PDF p.12 — Tout ordinaire
   // → requiert « aucune tuile d'Honneur ni d'extrémités » : Sans honneurs est un sous-ensemble
   if (has('Tout ordinaire')) rm('Sans honneurs');
