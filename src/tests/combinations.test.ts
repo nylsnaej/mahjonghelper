@@ -421,4 +421,28 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Sans honneurs');
     expectNotHas(items, 'Double Chow');
   });
+
+  // ── #15 ───────────────────────────────────────────────────────────────────
+  // Chow [1R 2R 3R] · Chow caché [7C 8C 9C] · Chow caché [6R 7R 8R] · Chow [2B 3B 4B] · Paire [Ouest Ouest]
+  // Tuile gagnante : 4B | écart | Est/Nord
+  // Référence : ventdestmahjong.fr — "main sans valeur - 8 pts"
+  // Aucune combinaison → Main sans valeur automatique
+  test('[Expert 8 pts] Main sans valeur détectée automatiquement', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('circle',1),    makeTile('circle',2),    makeTile('circle',3)   ], hidden: false },
+        { type: 'chow', tiles: [makeTile('character',7), makeTile('character',8), makeTile('character',9)], hidden: true  },
+        { type: 'chow', tiles: [makeTile('circle',6),    makeTile('circle',7),    makeTile('circle',8)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('bamboo',2),    makeTile('bamboo',3),    makeTile('bamboo',4)   ], hidden: false },
+      ],
+      pair:      { tiles: [makeTile('wind','W'), makeTile('wind','W')], hidden: false },
+      winTile:   makeTile('bamboo', 4),
+      winBy:     'discard',
+      windRound: 'E',
+      windPlayer: 'N',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(8);
+    expectHas(items, 'Main sans valeur', 8);
+  });
 });

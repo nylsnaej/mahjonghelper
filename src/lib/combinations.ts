@@ -620,6 +620,8 @@ export function scoreHand(hand: Hand): ScoreResult {
   }
 
   const items = applyExclusions(results);
+  // Main sans valeur : aucune combinaison → 8 pts de base (main valide mais sans points)
+  if (items.length === 0) items.push({ name: 'Main sans valeur', pts: 8 });
   const total = items.reduce((s, r) => s + r.pts, 0);
   return { items, total };
 }
