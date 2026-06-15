@@ -474,4 +474,32 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Tout Pung');
     expectNotHas(items, 'Trois Pungs purs consécutifs');
   });
+
+  // ── #17 ───────────────────────────────────────────────────────────────────
+  // Chow [7R 8R 9R] · Chow [7B 9B 8B] · Chow caché [1C 2C 3C] · Chow caché [7R 8R 9R] · Paire [1R 1R]
+  // Tuile gagnante : 9R | écart | Est/Est
+  // Référence : ventdestmahjong.fr
+  // Fix : Double Chow pur (C7+C7) ET Double Chow (C7+B7) coexistent —
+  //       Double Chow pur utilise un ensemble séparé et ne bloque pas le Double Chow cross-famille
+  // Score → Double Chow pur +1 | Double Chow +1 | Tout Chow +2 | Extrémité ou honneur partout +4 = 8 pts
+  test('[Expert 8 pts] Double Chow pur + Double Chow coexistent (3 chows valeur 7)', () => {
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [R(7), R(8), R(9)],                                                              hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',7), makeTile('bamboo',8), makeTile('bamboo',9)],               hidden: false },
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)],      hidden: true  },
+        { type: 'chow', tiles: [R(7), R(8), R(9)],                                                              hidden: true  },
+      ],
+      pair:    { tiles: [R(1), R(1)], hidden: false },
+      winTile:  R(9),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(8);
+    expectHas(items, 'Double Chow pur',              1);
+    expectHas(items, 'Double Chow',                  1);
+    expectHas(items, 'Tout Chow',                    2);
+    expectHas(items, 'Extrémité ou honneur partout', 4);
+  });
 });

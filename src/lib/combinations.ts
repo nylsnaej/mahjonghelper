@@ -131,9 +131,14 @@ export function scoreHand(hand: Hand): ScoreResult {
 
   // ─── 1 POINT ───
 
-  // Pairages de chows — un même chow ne peut participer qu'à une seule combinaison de pairage
+  // Pairages de chows
+  // Règle : Double Chow pur (même famille + même valeur) utilise un ensemble séparé
+  // et ne bloque pas la détection de Double Chow (familles différentes).
+  // Cela permet d'avoir à la fois Double Chow pur ET Double Chow quand la main
+  // contient ex. [C7, C7, B7] : le pur pour les deux cercles, le cross pour un cercle + bambou.
+  // Les autres pairages (Petite suite pure, Deux Chows purs d'extrémité, Double Chow)
+  // partagent un used set commun et ne peuvent pas se réutiliser mutuellement.
   {
-    const used = new Set<number>();
     const pairings: Array<{ name: string; i: number; j: number }> = [];
 
     for (let i = 0; i < chows.length; i++) {
@@ -162,9 +167,17 @@ export function scoreHand(hand: Hand): ScoreResult {
     };
     pairings.sort((a, b) => priority[a.name]! - priority[b.name]!);
 
+    const usedInPur   = new Set<number>(); // pour Double Chow pur uniquement
+    const usedInOther = new Set<number>(); // pour tous les autres pairages
+
     for (const p of pairings) {
-      if (used.has(p.i) || used.has(p.j)) continue;
-      used.add(p.i); used.add(p.j);
+      if (p.name === 'Double Chow pur') {
+        if (usedInPur.has(p.i) || usedInPur.has(p.j)) continue;
+        usedInPur.add(p.i); usedInPur.add(p.j);
+      } else {
+        if (usedInOther.has(p.i) || usedInOther.has(p.j)) continue;
+        usedInOther.add(p.i); usedInOther.add(p.j);
+      }
       add(p.name, 1);
     }
   }
