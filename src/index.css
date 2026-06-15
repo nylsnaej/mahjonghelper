@@ -227,6 +227,7 @@ header {
 .score-valid   { background: #0f3460; color: #f5c842; }
 .score-invalid { background: #3a1a1a; color: #e74c3c; }
 .calc-error    { color: #e74c3c; padding: 10px; }
+.calc-warning  { color: #e67e22; font-size: 0.85rem; margin: 4px 0 8px; padding: 6px 10px; background: #2a1f10; border-left: 3px solid #e67e22; border-radius: 3px; }
 
 h1 {
   font-size: 1.8rem;

@@ -243,11 +243,26 @@ function initCtx(): Ctx {
 export function CalculatorTab() {
   const [state, dispatch] = useReducer(calcReducer, undefined, initState);
   const [ctx, setCtx]     = useState<Ctx>(initCtx);
-  const [result, setResult] = useState<{ ok: true; hand: Hand; items: { name: string; pts: number }[]; total: number } | { ok: false; error: string } | null>(null);
+  const [result, setResult] = useState<{ ok: true; hand: Hand; items: { name: string; pts: number }[]; total: number; warning?: string } | { ok: false; error: string } | null>(null);
   const [copyLabel, setCopyLabel] = useState('Copier');
 
   const is7pairs = state.mode === '7pairs';
   const isSnake  = state.mode === 'snake';
+
+  // Avertissement : pung/kong marqué "caché" mais tuile gagnante par écart adverse
+  // → "Un Pung caché = 3 tuiles tirées soi-même" (PDF p.11) — pas applicable si le
+  //   groupe a été complété par l'écart d'un adversaire.
+  function checkConcealedPungWarning(): string | undefined {
+    if (ctx.winBy !== 'discard') return undefined;
+    if (!state.lastSlot?.startsWith('g')) return undefined;
+    const gi = +state.lastSlot[1]!;
+    const g = state.groups[gi];
+    if (!g || !g.hidden) return undefined;
+    const t = detectType(g.tiles);
+    if (t !== 'pung' && t !== 'kong') return undefined;
+    const label = tileLabel(g.tiles[0]!);
+    return `Le Pung de ${label} est marqué "Caché" mais la tuile gagnante vient d'un écart adverse — ce groupe devrait être exposé (non caché) car une de ses tuiles provient de l'écart.`;
+  }
 
   function usageCount(tile: Tile): number {
     let n = 0;
@@ -348,7 +363,7 @@ export function CalculatorTab() {
         specialType: 'snake',
       };
       const { items, total } = scoreHand(hand);
-      setResult({ ok: true, hand, items, total });
+      setResult({ ok: true, hand, items, total, warning: checkConcealedPungWarning() });
       return;
     }
 
@@ -377,7 +392,7 @@ export function CalculatorTab() {
       specialType: null,
     };
     const { items, total } = scoreHand(hand);
-    setResult({ ok: true, hand, items, total });
+    setResult({ ok: true, hand, items, total, warning: checkConcealedPungWarning() });
   }
 
   function reset() {
@@ -648,6 +663,9 @@ export function CalculatorTab() {
             <p className="calc-error">⚠ {result.error}</p>
           ) : (
             <>
+              {result.warning && (
+                <p className="calc-warning">⚠ {result.warning}</p>
+              )}
               {result.items.length === 0 ? (
                 <p style={{ color: '#aaa', padding: 8 }}>Aucune combinaison détectée.</p>
               ) : (
