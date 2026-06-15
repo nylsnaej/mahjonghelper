@@ -143,15 +143,19 @@ export function scoreHand(hand: Hand): ScoreResult {
 
     for (let i = 0; i < chows.length; i++) {
       for (let j = i + 1; j < chows.length; j++) {
-        const a = chows[i].tiles[0], b = chows[j].tiles[0];
-        if (!a || !b) continue;
-        if (a.value === b.value && a.type === b.type) {
+        // Utiliser la valeur minimale des tuiles comme début du chow (ordre de saisie indépendant)
+        const aStart = Math.min(...chows[i].tiles.map(t => t.value as number));
+        const bStart = Math.min(...chows[j].tiles.map(t => t.value as number));
+        const aType  = chows[i].tiles[0]?.type;
+        const bType  = chows[j].tiles[0]?.type;
+        if (!aType || !bType) continue;
+        if (aStart === bStart && aType === bType) {
           pairings.push({ name: 'Double Chow pur', i, j });
-        } else if (a.value === b.value && a.type !== b.type) {
+        } else if (aStart === bStart && aType !== bType) {
           pairings.push({ name: 'Double Chow', i, j });
-        } else if (a.type === b.type) {
-          const lo = Math.min(a.value as number, b.value as number);
-          const hi = Math.max(a.value as number, b.value as number);
+        } else if (aType === bType) {
+          const lo = Math.min(aStart, bStart);
+          const hi = Math.max(aStart, bStart);
           if (lo === 1 && hi === 7) {
             pairings.push({ name: "Deux Chows purs d'extrémité", i, j });
           } else if (hi - lo === 3) {

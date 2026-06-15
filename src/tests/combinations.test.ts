@@ -502,4 +502,36 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Tout Chow',                    2);
     expectHas(items, 'Extrémité ou honneur partout', 4);
   });
+
+  // ── #18 ───────────────────────────────────────────────────────────────────
+  // Chow [1B 2B 3B] · Pung [5B 5B 5B] · Pung caché [Vert Vert Vert] · Chow caché [4B 5B 3B] · Paire [9B 9B]
+  // Tuile gagnante : 3B | écart | Sud/Sud
+  // Référence : ventdestmahjong.fr (avec Dernière tuile existante +4 → 14 pts côté site)
+  // Bug corrigé : chow [4B 5B 3B] a tiles[0]=4B mais son vrai début est min(3,4,5)=3.
+  //   tiles[0].value=4 vs 1 donnait diff=3 → fausse Petite suite pure.
+  //   Avec normalisation (min), diff=3-1=2 → pas de Petite suite pure.
+  // Score sans flag → Semi pure +6 | 4 identiques (5B) +2 | Pung de Dragon (Vert) +2 = 10 pts
+  test('[10 pts] Bug tiles[0] : pas de fausse Petite suite pure sur chow saisi dans le désordre', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [B(1), B(2), B(3)],                                                                     hidden: false },
+        { type: 'pung', tiles: [B(5), B(5), B(5)],                                                                     hidden: false },
+        { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G')],                hidden: true  },
+        { type: 'chow', tiles: [B(4), B(5), B(3)],  // ordre de saisie : 4 d'abord, 3 en dernier (gagnant)
+                                                                                                                         hidden: true  },
+      ],
+      pair:      { tiles: [B(9), B(9)], hidden: false },
+      winTile:   B(3),
+      winBy:     'discard',
+      windRound: 'S',
+      windPlayer: 'S',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(10);
+    expectHas(items, 'Semi pure',            6);
+    expectHas(items, '4 identiques (5B)',    2);
+    expectHas(items, 'Pung de Dragon (Vert)',2);
+    expectNotHas(items, 'Petite suite pure');
+  });
 });
