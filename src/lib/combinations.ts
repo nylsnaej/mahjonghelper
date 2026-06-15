@@ -126,6 +126,9 @@ export function scoreHand(hand: Hand): ScoreResult {
   const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
   const kongs = groups.filter(g => g.type === 'kong');
 
+  // Valeur de début d'un chow (indépendante de l'ordre de saisie)
+  const chowStart = (g: typeof chows[0]) => Math.min(...g.tiles.map(t => t.value as number));
+
   const families  = new Set(allTiles.filter(isSuited).map(t => t.type));
   const hasHonors = allTiles.some(isHonor);
 
@@ -318,11 +321,9 @@ export function scoreHand(hand: Hand): ScoreResult {
     for (let i = 0; i < chows.length; i++) {
       for (let j = i + 1; j < chows.length; j++) {
         for (let k = j + 1; k < chows.length; k++) {
-          const ca = chows[i].tiles[0], cb = chows[j].tiles[0], cc = chows[k].tiles[0];
-          if (!ca || !cb || !cc) continue;
-          const types = new Set([ca.type, cb.type, cc.type]);
+          const types = new Set([chows[i].tiles[0]?.type, chows[j].tiles[0]?.type, chows[k].tiles[0]?.type]);
           if (types.size === 3) {
-            const vals = [ca.value as number, cb.value as number, cc.value as number].sort((a, b) => a - b);
+            const vals = [chowStart(chows[i]), chowStart(chows[j]), chowStart(chows[k])].sort((a, b) => a - b);
             if (vals[1]! - vals[0]! === 1 && vals[2]! - vals[1]! === 1)
               add('Trois Chows superposés', 6);
           }
@@ -356,9 +357,9 @@ export function scoreHand(hand: Hand): ScoreResult {
   // ─── 8 POINTS ───
 
   {
-    const chows1 = chows.filter(g => g.tiles[0]?.value === 1);
-    const chows4 = chows.filter(g => g.tiles[0]?.value === 4);
-    const chows7 = chows.filter(g => g.tiles[0]?.value === 7);
+    const chows1 = chows.filter(g => chowStart(g) === 1);
+    const chows4 = chows.filter(g => chowStart(g) === 4);
+    const chows7 = chows.filter(g => chowStart(g) === 7);
     let found = false;
     for (const c1 of chows1) for (const c4 of chows4) for (const c7 of chows7) {
       if (!found && c1.tiles[0] && c4.tiles[0] && c7.tiles[0] &&
@@ -387,14 +388,17 @@ export function scoreHand(hand: Hand): ScoreResult {
   }
 
   {
+    const tcFound = new Set<number>(); // évite le double comptage quand 2 chows ont la même famille+valeur
     for (let i = 0; i < chows.length; i++) {
       for (let j = i + 1; j < chows.length; j++) {
         for (let k = j + 1; k < chows.length; k++) {
-          const ca = chows[i].tiles[0], cb = chows[j].tiles[0], cc = chows[k].tiles[0];
-          if (!ca || !cb || !cc) continue;
-          const types = new Set([ca.type, cb.type, cc.type]);
-          if (types.size === 3 && ca.value === cb.value && cb.value === cc.value)
+          const aS = chowStart(chows[i]), bS = chowStart(chows[j]), cS = chowStart(chows[k]);
+          if (aS !== bS || bS !== cS) continue;
+          const types = new Set([chows[i].tiles[0]?.type, chows[j].tiles[0]?.type, chows[k].tiles[0]?.type]);
+          if (types.size === 3 && !tcFound.has(aS)) {
             add('Triple Chows', 8);
+            tcFound.add(aS);
+          }
         }
       }
     }
@@ -445,7 +449,7 @@ export function scoreHand(hand: Hand): ScoreResult {
 
   {
     for (const fam of ['bamboo','circle','character']) {
-      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(g => g.tiles[0]?.value as number).sort((a, b) => a - b);
+      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(chowStart).sort((a, b) => a - b);
       if (famChows.includes(1) && famChows.includes(4) && famChows.includes(7)) {
         add('Grande suite pure', 16); break;
       }
@@ -481,7 +485,7 @@ export function scoreHand(hand: Hand): ScoreResult {
 
   {
     for (const fam of ['bamboo','circle','character']) {
-      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(g => g.tiles[0]?.value as number).sort((a, b) => a - b);
+      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(chowStart).sort((a, b) => a - b);
       for (let i = 0; i < famChows.length; i++) {
         for (let j = i + 1; j < famChows.length; j++) {
           for (let k = j + 1; k < famChows.length; k++) {
@@ -501,7 +505,7 @@ export function scoreHand(hand: Hand): ScoreResult {
   {
     for (const fam of ['bamboo','circle','character']) {
       for (let v = 1; v <= 7; v++) {
-        const count = chows.filter(g => g.tiles[0]?.type === fam && g.tiles[0]?.value === v).length;
+        const count = chows.filter(g => g.tiles[0]?.type === fam && chowStart(g) === v).length;
         if (count >= 3) add('Triple Chow pur', 24);
       }
     }
@@ -550,7 +554,7 @@ export function scoreHand(hand: Hand): ScoreResult {
 
   {
     for (const fam of ['bamboo','circle','character']) {
-      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(g => g.tiles[0]?.value as number).sort((a, b) => a - b);
+      const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(chowStart).sort((a, b) => a - b);
       if (famChows.length >= 4) {
         for (let i = 0; i <= famChows.length - 4; i++) {
           const d1 = famChows[i+1]! - famChows[i]!, d2 = famChows[i+2]! - famChows[i+1]!, d3 = famChows[i+3]! - famChows[i+2]!;
@@ -567,7 +571,7 @@ export function scoreHand(hand: Hand): ScoreResult {
   {
     for (const fam of ['bamboo','circle','character']) {
       for (let v = 1; v <= 7; v++) {
-        const count = chows.filter(g => g.tiles[0]?.type === fam && g.tiles[0]?.value === v).length;
+        const count = chows.filter(g => g.tiles[0]?.type === fam && chowStart(g) === v).length;
         if (count >= 4) add('Quadruple Chows purs', 48);
       }
     }

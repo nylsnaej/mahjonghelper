@@ -534,4 +534,38 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Pung de Dragon (Vert)',2);
     expectNotHas(items, 'Petite suite pure');
   });
+
+  // ── #19 ───────────────────────────────────────────────────────────────────
+  // Chow [1B 2B 3B] · Chow caché [1R 2R 3R] · Chow caché [1C 2C 3C] · Chow [1C 3C 2C] · Paire [4B 4B]
+  // Tuile gagnante : 2C (attente au milieu) | écart | Est/Est
+  // Bug corrigé : 4 chows valeur 1 → (B1,R1,Ch1-caché) ET (B1,R1,Ch1-exposé) déclenchaient
+  //   deux Triple Chows. Fix : Set tcFound par valeur de départ.
+  // Score → Double Chow pur +1 | Attente au milieu +1 | Tout Chow +2 | Triple Chows +8
+  //          | Les quatre premiers +12 = 24 pts
+  test('[24 pts] Triple Chows une seule fois malgré 2 chows même famille+valeur', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [B(1), B(2), B(3)], hidden: false },
+        { type: 'chow', tiles: [R(1), R(2), R(3)], hidden: true  },
+        { type: 'chow', tiles: [C(1), C(2), C(3)], hidden: true  },
+        { type: 'chow', tiles: [C(1), C(3), C(2)], hidden: false }, // ordre saisie : 1,3,2
+      ],
+      pair:    { tiles: [B(4), B(4)], hidden: false },
+      winTile:  C(2),
+      waitType: 'closed',
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(24);
+    expectHas(items, 'Double Chow pur',          1);
+    expectHas(items, 'Attente unique au milieu',  1);
+    expectHas(items, 'Tout Chow',               2);
+    expectHas(items, 'Triple Chows',            8);
+    expectHas(items, 'Les quatre premiers',    12);
+    // Triple Chows ne doit apparaître qu'une seule fois
+    expect(items.filter(i => i.name === 'Triple Chows').length).toBe(1);
+  });
 });
