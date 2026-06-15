@@ -445,4 +445,33 @@ describe('Mains validées par expert', () => {
     expect(total).toBe(8);
     expectHas(items, 'Main sans valeur', 8);
   });
+
+  // ── #16 ───────────────────────────────────────────────────────────────────
+  // Pung [3B] · Pung [5B] · Pung [6B] · Pung caché [4B] · Paire [8R]
+  // Tuile gagnante : 4B | écart | Est/Est
+  // Référence : ventdestmahjong.fr
+  // PDF p.43 : Quatre Pungs purs consécutifs inclut Tout Pung et Trois Pungs purs consécutifs
+  // Bug corrigé : Trois Pungs purs consécutifs ne doit pas être compté deux fois
+  // Score → Une famille absente +1 | Tout ordinaire +2 | Quatre Pungs purs consécutifs +48 = 51 pts
+  test('[Expert 51 pts] Quatre Pungs purs consécutifs, exclusions Tout Pung + Trois Pungs purs', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [B(3), B(3), B(3)], hidden: false },
+        { type: 'pung', tiles: [B(6), B(6), B(6)], hidden: false },
+        { type: 'pung', tiles: [B(5), B(5), B(5)], hidden: false },
+        { type: 'pung', tiles: [B(4), B(4), B(4)], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('circle',8), makeTile('circle',8)], hidden: false },
+      winTile:  B(4),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(51);
+    expectHas(items, 'Une famille absente',           1);
+    expectHas(items, 'Tout ordinaire',                2);
+    expectHas(items, 'Quatre Pungs purs consécutifs', 48);
+    expectNotHas(items, 'Tout Pung');
+    expectNotHas(items, 'Trois Pungs purs consécutifs');
+  });
 });

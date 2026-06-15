@@ -494,8 +494,10 @@ export function scoreHand(hand: Hand): ScoreResult {
     for (const fam of ['bamboo','circle','character']) {
       const famPungs = pungs.filter(g => g.tiles[0]?.type === fam).map(g => g.tiles[0]?.value as number).sort((a, b) => a - b);
       for (let i = 0; i < famPungs.length - 2; i++) {
-        if (famPungs[i + 1]! - famPungs[i]! === 1 && famPungs[i + 2]! - famPungs[i + 1]! === 1)
+        if (famPungs[i + 1]! - famPungs[i]! === 1 && famPungs[i + 2]! - famPungs[i + 1]! === 1) {
           add('Trois Pungs purs consécutifs', 24);
+          break; // une seule occurrence par famille, évite le double comptage sur 4 pungs
+        }
       }
     }
   }
@@ -687,6 +689,22 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   // → « Les points pour « Tout Pung » sont inclus. Les combinaisons à 1 point
   //   (« Pung de Vent ») sont incluses. Seules les combinaisons à 2 points sont comptées. »
   if (has('Tout honneur')) { rm('Tout Pung'); rmPfx('Pung de Vent'); }
+
+  // PDF p.43 — Quatre Pungs purs consécutifs
+  // → « Les points pour « Tout Pung » sont inclus »
+  //   Exemple 1 ne liste pas « Trois Pungs purs consécutifs » → inclus également
+  if (has('Quatre Pungs purs consécutifs')) {
+    rm('Tout Pung');
+    rm('Trois Pungs purs consécutifs');
+  }
+
+  // PDF p.44 — Quatre Pungs cachés
+  // → « Les points qui sont inclus et qui ne peuvent pas être ajoutés :
+  //   « Tout Pungs », « Tout caché donné » »
+  if (has('Quatre Pungs cachés')) {
+    rm('Tout Pung');
+    rm('Tout caché donné');
+  }
 
   // PDF p.45 — Quatre petits Vents
   // → « Les autres points [Pung de Vent 1pt] sont inclus par définition. »
