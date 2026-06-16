@@ -719,12 +719,20 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
     rm('Trois Pungs purs consécutifs');
   }
 
+  // PDF p.30 — Trois Pungs cachés
+  // → aucun exemple ne montre « Deux Pungs cachés » en cumul ; « peut se cumuler
+  //   avec les points des Pungs » désigne les bonus de valeur, pas les bonus structurels
+  if (has('Trois Pungs cachés')) rm('Deux Pungs cachés');
+
   // PDF p.44 — Quatre Pungs cachés
   // → « Les points qui sont inclus et qui ne peuvent pas être ajoutés :
   //   « Tout Pungs », « Tout caché donné » »
+  //   Aussi : Trois Pungs cachés et Deux Pungs cachés inclus par définition
   if (has('Quatre Pungs cachés')) {
     rm('Tout Pung');
     rm('Tout caché donné');
+    rm('Trois Pungs cachés');
+    rm('Deux Pungs cachés');
   }
 
   // PDF p.45 — Quatre petits Vents

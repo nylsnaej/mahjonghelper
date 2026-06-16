@@ -568,4 +568,36 @@ describe('Mains validées par expert', () => {
     // Triple Chows ne doit apparaître qu'une seule fois
     expect(items.filter(i => i.name === 'Triple Chows').length).toBe(1);
   });
+
+  // ── #20 ───────────────────────────────────────────────────────────────────
+  // Pung caché [Nord] · Pung caché [Blanc] · Chow caché [7R 8R 9R] · Pung caché [3C] · Paire [5B]
+  // Tuile gagnante : 5B (paire) | écart | Nord/Ouest
+  // PDF p.30 : Trois Pungs cachés ne cumule pas Deux Pungs cachés (aucun exemple PDF)
+  // Score → Attente paire +1 | Pung de Dragon (Blanc) +2 | Vent du tour (Nord) +2
+  //          | Tout caché donné +2 | Tout Type +6 | Trois Pungs cachés +16 = 29 pts
+  test('[29 pts] Trois Pungs cachés exclut Deux Pungs cachés', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('wind','N'),   makeTile('wind','N'),   makeTile('wind','N')  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('dragon','W'), makeTile('dragon','W'), makeTile('dragon','W')], hidden: true  },
+        { type: 'chow', tiles: [makeTile('circle',7),   makeTile('circle',8),   makeTile('circle',9)  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('character',3),makeTile('character',3),makeTile('character',3)], hidden: true  },
+      ],
+      pair:      { tiles: [makeTile('bamboo',5), makeTile('bamboo',5)], hidden: false },
+      winTile:   makeTile('bamboo', 5),
+      waitType:  'pair',
+      winBy:     'discard',
+      windRound: 'N',
+      windPlayer: 'W',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(29);
+    expectHas(items, 'Attente unique sur la paire', 1);
+    expectHas(items, 'Pung de Dragon (Blanc)',      2);
+    expectHas(items, 'Vent du tour (Nord)',          2);
+    expectHas(items, 'Tout caché donné',            2);
+    expectHas(items, 'Tout Type',                   6);
+    expectHas(items, 'Trois Pungs cachés',         16);
+    expectNotHas(items, 'Deux Pungs cachés');
+  });
 });
