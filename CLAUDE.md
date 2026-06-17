@@ -79,7 +79,7 @@ Catalogue structuré des règles avec :
 
 ## Tests de régression
 
-`src/tests/combinations.test.ts` — 15 tests au moment de la rédaction de ce fichier.
+`src/tests/combinations.test.ts` — 20 tests (2026-06-18).
 
 Chaque test représente une main validée par une source externe (site de référence ou expert). Format :
 - Commentaire avec la main, la tuile gagnante, le contexte
@@ -123,7 +123,8 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 | Tout honneur | Tout Pung, Pung de Vent (tous) |
 | Quatre petits Vents | Pung de Vent (tous) |
 | Quatre Pungs purs consécutifs | Tout Pung, Trois Pungs purs consécutifs |
-| Quatre Pungs cachés | Tout Pung, Tout caché donné |
+| Trois Pungs cachés | Deux Pungs cachés |
+| Quatre Pungs cachés | Tout Pung, Tout caché donné, Trois Pungs cachés, Deux Pungs cachés |
 | Quadruple Chows purs | Triple Chow pur, Double Chow pur, 4 identiques (tous) |
 | Triple Chows | Double Chow |
 | Grande suite pure | Deux Chows purs d'extrémité |
@@ -134,6 +135,18 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 | Dernière tuile tirée | Tirer soi-même |
 | Finir sur le Kong | Tirer soi-même |
 | Kong volé | Dernière tuile existante |
+
+---
+
+## Bugs de détection corrigés (à garder en tête)
+
+- **`chowStart(g)`** = `Math.min(...g.tiles.map(t => t.value))` — normalise le début d'un chow indépendamment de l'ordre de saisie dans le calculateur. Utilisé partout où on compare des débuts de chow (pairages, Grande suite, Triple Chows, Grande suite pure, Chows purs superposés, Triple/Quadruple Chow pur).
+
+- **Triple Chows double comptage** : un `Set tcFound` par valeur de départ évite de compter deux fois Triple Chows quand la main contient 2 chows de la même famille et valeur (ex. [B1,R1,Ch1,Ch1] → Triple Chows compté 1 seule fois).
+
+- **Pairages Double Chow pur vs Double Chow** : deux ensembles `used` distincts (`usedInPur` / `usedInOther`). Double Chow pur n'empêche pas la détection d'un Double Chow cross-famille sur le même chow. Ex. [C7,C7,B7] → Double Chow pur (C7+C7) + Double Chow (C7+B7).
+
+- **Avertissement calculateur** : si la tuile gagnante vient d'un écart adverse et que le groupe qu'elle complète est un pung/kong marqué "Caché", un avertissement orange s'affiche. Raison : "Un Pung caché = 3 tuiles tirées soi-même" (PDF p.11) — un pung complété par un écart n'est pas caché.
 
 ---
 
