@@ -1,7 +1,5 @@
-import { tileLabel } from './tiles';
+import { tileLabel, WIND_NAME } from './tiles';
 import type { Hand, ScoreResult } from '../types';
-
-const WIND_NAME: Record<string, string> = { E: 'Est', S: 'Sud', W: 'Ouest', N: 'Nord' };
 
 export function handToText(hand: Hand, score: ScoreResult, level: number | string): string {
   const lines: string[] = [];

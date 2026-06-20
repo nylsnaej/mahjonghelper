@@ -694,10 +694,11 @@ export function CalculatorTab() {
                   value={handToText(result.hand, { items: result.items, total: result.total }, 'Calculateur')}
                   onFocus={e => e.target.select()} />
                 <button className="copy-action-btn" onClick={() => {
-                  const ta = document.querySelector<HTMLTextAreaElement>('#calc-result .hand-text-area');
-                  if (ta) { ta.select(); document.execCommand('copy'); }
-                  setCopyLabel('Copié ✓');
-                  setTimeout(() => setCopyLabel('Copier'), 1500);
+                  const text = handToText(result.hand, { items: result.items, total: result.total }, 'Calculateur');
+                  navigator.clipboard.writeText(text)
+                    .then(() => setCopyLabel('Copié ✓'))
+                    .catch(() => setCopyLabel('Échec'))
+                    .finally(() => setTimeout(() => setCopyLabel('Copier'), 1500));
                 }}>{copyLabel}</button>
               </div>
             </>

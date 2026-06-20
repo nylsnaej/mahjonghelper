@@ -118,9 +118,9 @@ function generateLevel6(): Hand {
   const f = rand([...SUITS]);
   const starts = shuffle([1, 2, 3, 4, 5, 6, 7]);
   const g1 = makeChow(f, starts[0]!, false);
-  const g2 = makeChow(f, (starts[1]! > 7 ? 1 : starts[1])!, false);
+  const g2 = makeChow(f, starts[1]!, false);
   const g3 = makePung(suit(f, randInt(1, 9)), false);
-  const g4 = makeChow(f, (starts[2]! > 7 ? 2 : starts[2])!, false);
+  const g4 = makeChow(f, starts[2]!, false);
   const pairTile = suit(f, randInt(1, 9));
   return baseHand({ groups: [g1, g2, g3, g4], pair: makePair(pairTile, true), winBy: rand(['self', 'discard'] as const), winTile: pairTile, waitType: pairWait(pairTile), ...ctx });
 }
@@ -217,5 +217,6 @@ export function generateHand(level: number): Hand {
     const baseScore = score.total - hand.flowers.length;
     if (baseScore >= 8) return hand;
   }
+  if (import.meta.env.DEV) console.warn('[generator] niveau', level, ': aucune main ≥ 8 pts après 20 tentatives');
   return gen();
 }

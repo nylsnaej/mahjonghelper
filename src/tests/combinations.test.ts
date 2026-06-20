@@ -600,4 +600,94 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Trois Pungs cachés',         16);
     expectNotHas(items, 'Deux Pungs cachés');
   });
+
+  // ── #21 ───────────────────────────────────────────────────────────────────
+  // Chow [1B 2B 3B] · Chow [2R 3R 4R] · Chow [3C 4C 5C] · Chow [4B 5B 6B] · Paire [8R 8R]
+  // Bug C-01 : 4 chows sur 3 familles aux débuts 1,2,3,4 forment deux triplets superposés
+  //   (1B,2R,3C) et (2R,3C,4B) → avant fix, Trois Chows superposés comptait 2× (+12 pts)
+  // Score → Petite suite pure +1 | Tout Chow +2 | Trois Chows superposés +6 = 9 pts
+  test('[9 pts] Bug C-01 : Trois Chows superposés compte une seule fois (4 chows, 3 familles)', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [B(1), B(2), B(3)], hidden: false },
+        { type: 'chow', tiles: [R(2), R(3), R(4)], hidden: false },
+        { type: 'chow', tiles: [C(3), C(4), C(5)], hidden: false },
+        { type: 'chow', tiles: [B(4), B(5), B(6)], hidden: true  }, // caché pour neutraliser Tout exposé
+      ],
+      pair:    { tiles: [R(8), R(8)], hidden: false },
+      winTile:  R(8),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(9);
+    expect(items.filter(i => i.name === 'Trois Chows superposés').length).toBe(1);
+    expectHas(items, 'Trois Chows superposés', 6);
+    expectHas(items, 'Tout Chow',              2);
+    expectHas(items, 'Petite suite pure',       1);
+  });
+
+  // ── #22 ───────────────────────────────────────────────────────────────────
+  // Pung [3B×3] · Pung [4R×3] · Pung [5C×3] · Pung [6B×3] · Paire [2R×2]
+  // Bug C-03 : 4 pungs aux valeurs 3,4,5,6 sur 3 familles forment deux triplets consécutifs
+  //   (3B,4R,5C) et (4R,5C,6B) → avant fix, Trois Pungs consécutifs comptait 2× (+16 pts)
+  // Score → Tout ordinaire +2 | Tout Pung +6 | Trois Pungs consécutifs +8 = 16 pts
+  test('[16 pts] Bug C-03 : Trois Pungs consécutifs compte une seule fois (4 pungs, 3 familles)', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [B(3), B(3), B(3)], hidden: false },
+        { type: 'pung', tiles: [R(4), R(4), R(4)], hidden: false },
+        { type: 'pung', tiles: [C(5), C(5), C(5)], hidden: false },
+        { type: 'pung', tiles: [B(6), B(6), B(6)], hidden: true  }, // caché pour neutraliser Tout exposé
+      ],
+      pair:    { tiles: [R(2), R(2)], hidden: false },
+      winTile:  R(2),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(16);
+    expect(items.filter(i => i.name === 'Trois Pungs consécutifs').length).toBe(1);
+    expectHas(items, 'Tout ordinaire',          2);
+    expectHas(items, 'Tout Pung',               6);
+    expectHas(items, 'Trois Pungs consécutifs', 8);
+    expectNotHas(items, 'Sans honneurs');
+  });
+
+  // ── #23 ───────────────────────────────────────────────────────────────────
+  // Chow [1B 2B 3B] · Chow [2B 3B 4B] · Chow [3B 4B 5B] · Chow [4B 5B 6B] · Paire [9R 9R]
+  // Bug C-02 : 4 chows de même famille aux débuts 1,2,3,4 forment deux triplets superposés purs
+  //   (1,2,3) et (2,3,4) → avant fix, Trois Chows purs superposés comptait 2× (+32 pts)
+  // Quatre Chows purs superposés (starts 1,2,3,4 d=1) exclut Trois Chows purs superposés.
+  // Tout exposé s'applique (tous groupes exposés + écart) → inclus dans le score.
+  // Score → Une famille absente +1 | Petite suite pure +1 | Tout Chow +2 | Tout exposé +6
+  //          | Quatre Chows purs superposés +32 = 42 pts
+  test('[42 pts] Bug C-02 : Trois Chows purs superposés exclu par Quatre Chows purs superposés', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [B(1), B(2), B(3)], hidden: false },
+        { type: 'chow', tiles: [B(2), B(3), B(4)], hidden: false },
+        { type: 'chow', tiles: [B(3), B(4), B(5)], hidden: false },
+        { type: 'chow', tiles: [B(4), B(5), B(6)], hidden: false },
+      ],
+      pair:    { tiles: [R(9), R(9)], hidden: false },
+      winTile:  R(9),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(42);
+    expectHas(items, 'Une famille absente',           1);
+    expectHas(items, 'Petite suite pure',             1);
+    expectHas(items, 'Tout Chow',                     2);
+    expectHas(items, 'Tout exposé',                   6);
+    expectHas(items, 'Quatre Chows purs superposés', 32);
+    expectNotHas(items, 'Trois Chows purs superposés');
+    expectNotHas(items, 'Sans honneurs');
+  });
 });

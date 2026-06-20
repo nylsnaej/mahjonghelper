@@ -3,7 +3,7 @@ import { TileComponent } from './TileComponent';
 import { TileGroup } from './TileGroup';
 import { generateHand } from '../lib/generator';
 import { scoreHand, getComboRef } from '../lib/combinations';
-import { tileLabel } from '../lib/tiles';
+import { tileLabel, WIND_NAME } from '../lib/tiles';
 import { handToText } from '../lib/handText';
 import type { Hand, ScoreResult } from '../types';
 
@@ -21,7 +21,6 @@ const LEVEL_DESCS = [
   'Mains maximales, contexte complet, Main verte',
 ];
 
-const WIND_NAME: Record<string, string> = { E: 'Est', S: 'Sud', W: 'Ouest', N: 'Nord' };
 
 interface Stats { played: number; correct: number; totalDiff: number; }
 
@@ -75,10 +74,10 @@ export function TrainingTab() {
 
   function handleCopy() {
     if (!hand || !score) return;
-    const ta = document.getElementById('hand-text-area') as HTMLTextAreaElement | null;
-    if (ta) { ta.select(); document.execCommand('copy'); }
-    setCopyLabel('Copié ✓');
-    setTimeout(() => setCopyLabel('Copier'), 1500);
+    navigator.clipboard.writeText(handToText(hand, score, level))
+      .then(() => setCopyLabel('Copié ✓'))
+      .catch(() => setCopyLabel('Échec'))
+      .finally(() => setTimeout(() => setCopyLabel('Copier'), 1500));
   }
 
   if (!hand || !score) return null;

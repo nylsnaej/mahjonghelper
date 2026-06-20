@@ -7,6 +7,8 @@ const WIND_SYMBOLS:   Record<string, string> = { E:'東', S:'南', W:'西', N:'�
 const DRAGON_SYMBOLS: Record<string, string> = { R:'中', G:'發', W:'白' };
 const FLOWER_SYMBOLS  = ['🌸','🌺','🌻','🌼','🍀','🍁','🌿','🎋'];
 
+export const WIND_NAME: Record<string, string> = { E: 'Est', S: 'Sud', W: 'Ouest', N: 'Nord' };
+
 export function makeTile(type: TileType, value: number | string): Tile {
   return { type, value };
 }

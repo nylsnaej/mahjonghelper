@@ -1,5 +1,5 @@
 import { tileLabel, tileKey } from './tiles';
-import type { Tile, Hand, ScoreItem, ScoreResult } from '../types';
+import type { Tile, Hand, ScoreItem, ScoreResult, Group, Pair } from '../types';
 
 export const COMBO_REFS: Record<string, number> = {
   'Double Chow pur':                  5,
@@ -94,59 +94,46 @@ export function getComboRef(name: string): number | null {
   return null;
 }
 
-export function scoreHand(hand: Hand): ScoreResult {
-  const results: ScoreItem[] = [];
+// ── Helpers module-level ───────────────────────────────────────────────────
 
-  function add(name: string, pts: number) {
-    if (pts > 0) results.push({ name, pts });
-  }
+const isSuited      = (t: Tile) => ['bamboo','circle','character'].includes(t.type);
+const isHonor       = (t: Tile) => t.type === 'wind' || t.type === 'dragon';
+const isTerminal    = (t: Tile) => isSuited(t) && (t.value === 1 || t.value === 9);
+const isTermOrHonor = (t: Tile) => isTerminal(t) || isHonor(t);
+const isOrdinary    = (t: Tile) => isSuited(t) && (t.value as number) >= 2 && (t.value as number) <= 8;
+// Valeur de début d'un chow (indépendante de l'ordre de saisie)
+const chowStart     = (g: Group) => Math.min(...g.tiles.map(t => t.value as number));
 
-  if (hand.specialType === '13orphans') {
-    add('Treize orphelins', 88);
-    if (hand.winBy === 'self')          add('Tout caché tiré', 4);
-    if (hand.waitType === 'pair')       add('Attente unique sur la paire', 1);
-    if (hand.waitType === 'edge')       add('Attente unique au bord', 1);
-    if (hand.waitType === 'closed')     add('Attente unique au milieu', 1);
-    hand.flowers.forEach(() => add('Fleur', 1));
-    return { items: results, total: results.reduce((s, r) => s + r.pts, 0) };
-  }
+type Adder = (name: string, pts: number) => void;
 
-  const groups   = hand.groups;
-  const pair     = hand.pair;
-  const allElems = [...groups, pair];
-  const allTiles = allElems.flatMap(g => g.tiles).concat(hand.flowers);
+interface ScoreCtx {
+  hand: Hand;
+  groups: Group[];
+  pair: Pair;
+  chows: Group[];
+  pungs: Group[];
+  kongs: Group[];
+  allElems: Array<Group | Pair>;
+  allTiles: Tile[];
+  nonFlowerTiles: Tile[];
+  families: Set<string>;
+  hasHonors: boolean;
+}
 
-  const isSuited      = (t: Tile) => ['bamboo','circle','character'].includes(t.type);
-  const isHonor       = (t: Tile) => t.type === 'wind' || t.type === 'dragon';
-  const isTerminal    = (t: Tile) => isSuited(t) && (t.value === 1 || t.value === 9);
-  const isTermOrHonor = (t: Tile) => isTerminal(t) || isHonor(t);
-  const isOrdinary    = (t: Tile) => isSuited(t) && (t.value as number) >= 2 && (t.value as number) <= 8;
+// ── Sous-fonctions par tranche de points ──────────────────────────────────
 
-  const chows = groups.filter(g => g.type === 'chow');
-  const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
-  const kongs = groups.filter(g => g.type === 'kong');
-
-  // Valeur de début d'un chow (indépendante de l'ordre de saisie)
-  const chowStart = (g: typeof chows[0]) => Math.min(...g.tiles.map(t => t.value as number));
-
-  const families  = new Set(allTiles.filter(isSuited).map(t => t.type));
-  const hasHonors = allTiles.some(isHonor);
-
-  // ─── 1 POINT ───
+function score1pt(ctx: ScoreCtx, add: Adder): void {
+  const { hand, groups, chows, pungs, kongs, families, hasHonors } = ctx;
 
   // Pairages de chows
-  // Règle : Double Chow pur (même famille + même valeur) utilise un ensemble séparé
+  // Double Chow pur (même famille + même valeur) utilise un ensemble séparé
   // et ne bloque pas la détection de Double Chow (familles différentes).
-  // Cela permet d'avoir à la fois Double Chow pur ET Double Chow quand la main
-  // contient ex. [C7, C7, B7] : le pur pour les deux cercles, le cross pour un cercle + bambou.
-  // Les autres pairages (Petite suite pure, Deux Chows purs d'extrémité, Double Chow)
-  // partagent un used set commun et ne peuvent pas se réutiliser mutuellement.
+  // Ex. [C7, C7, B7] → Double Chow pur (C7+C7) + Double Chow (C7+B7).
   {
     const pairings: Array<{ name: string; i: number; j: number }> = [];
 
     for (let i = 0; i < chows.length; i++) {
       for (let j = i + 1; j < chows.length; j++) {
-        // Utiliser la valeur minimale des tuiles comme début du chow (ordre de saisie indépendant)
         const aStart = Math.min(...chows[i].tiles.map(t => t.value as number));
         const bStart = Math.min(...chows[j].tiles.map(t => t.value as number));
         const aType  = chows[i].tiles[0]?.type;
@@ -219,6 +206,10 @@ export function scoreHand(hand: Hand): ScoreResult {
   if (hand.waitType === 'edge')   add('Attente unique au bord', 1);
   if (hand.waitType === 'closed') add('Attente unique au milieu', 1);
   if (hand.waitType === 'pair')   add('Attente unique sur la paire', 1);
+}
+
+function score2to4pt(ctx: ScoreCtx, add: Adder): void {
+  const { hand, groups, chows, pungs, kongs, allElems, nonFlowerTiles, hasHonors } = ctx;
 
   // ─── 2 POINTS ───
 
@@ -289,7 +280,6 @@ export function scoreHand(hand: Hand): ScoreResult {
     });
   }
 
-  const nonFlowerTiles = allTiles.filter(t => t.type !== 'flower');
   if (nonFlowerTiles.length > 0 && nonFlowerTiles.every(t => isOrdinary(t)))
     add('Tout ordinaire', 2);
 
@@ -311,6 +301,10 @@ export function scoreHand(hand: Hand): ScoreResult {
     const expKongs = kongs.filter(g => !g.hidden).length;
     if (expKongs >= 2) add('Deux Kongs exposés', 4);
   }
+}
+
+function score6to8pt(ctx: ScoreCtx, add: Adder): void {
+  const { hand, groups, pair, chows, pungs, kongs, allTiles, families, hasHonors } = ctx;
 
   // ─── 6 POINTS ───
 
@@ -318,14 +312,17 @@ export function scoreHand(hand: Hand): ScoreResult {
   if (families.size === 1 && hasHonors) add('Semi pure', 6);
 
   {
-    for (let i = 0; i < chows.length; i++) {
-      for (let j = i + 1; j < chows.length; j++) {
-        for (let k = j + 1; k < chows.length; k++) {
+    let found = false;
+    for (let i = 0; i < chows.length && !found; i++) {
+      for (let j = i + 1; j < chows.length && !found; j++) {
+        for (let k = j + 1; k < chows.length && !found; k++) {
           const types = new Set([chows[i].tiles[0]?.type, chows[j].tiles[0]?.type, chows[k].tiles[0]?.type]);
           if (types.size === 3) {
             const vals = [chowStart(chows[i]), chowStart(chows[j]), chowStart(chows[k])].sort((a, b) => a - b);
-            if (vals[1]! - vals[0]! === 1 && vals[2]! - vals[1]! === 1)
+            if (vals[1]! - vals[0]! === 1 && vals[2]! - vals[1]! === 1) {
               add('Trois Chows superposés', 6);
+              found = true;
+            }
           }
         }
       }
@@ -371,17 +368,20 @@ export function scoreHand(hand: Hand): ScoreResult {
   }
 
   {
-    for (let i = 0; i < pungs.length; i++) {
-      for (let j = i + 1; j < pungs.length; j++) {
-        for (let k = j + 1; k < pungs.length; k++) {
+    let found = false;
+    for (let i = 0; i < pungs.length && !found; i++) {
+      for (let j = i + 1; j < pungs.length && !found; j++) {
+        for (let k = j + 1; k < pungs.length && !found; k++) {
           const pa = pungs[i].tiles[0], pb = pungs[j].tiles[0], pc = pungs[k].tiles[0];
           if (!pa || !pb || !pc) continue;
           if (!isSuited(pa) || !isSuited(pb) || !isSuited(pc)) continue;
           const types = new Set([pa.type, pb.type, pc.type]);
           if (types.size !== 3) continue;
           const vals = [pa.value as number, pb.value as number, pc.value as number].sort((a, b) => a - b);
-          if (vals[1]! - vals[0]! === 1 && vals[2]! - vals[1]! === 1)
+          if (vals[1]! - vals[0]! === 1 && vals[2]! - vals[1]! === 1) {
             add('Trois Pungs consécutifs', 8);
+            found = true;
+          }
         }
       }
     }
@@ -425,6 +425,10 @@ export function scoreHand(hand: Hand): ScoreResult {
   }
 
   if (hand.specialType === 'chicken') add('Main sans valeur', 8);
+}
+
+function score12to24pt(ctx: ScoreCtx, add: Adder): void {
+  const { hand, groups, pair, chows, pungs, allElems, families, hasHonors } = ctx;
 
   // ─── 12 POINTS ───
 
@@ -486,11 +490,15 @@ export function scoreHand(hand: Hand): ScoreResult {
   {
     for (const fam of ['bamboo','circle','character']) {
       const famChows = chows.filter(g => g.tiles[0]?.type === fam).map(chowStart).sort((a, b) => a - b);
-      for (let i = 0; i < famChows.length; i++) {
-        for (let j = i + 1; j < famChows.length; j++) {
-          for (let k = j + 1; k < famChows.length; k++) {
+      let found = false;
+      for (let i = 0; i < famChows.length && !found; i++) {
+        for (let j = i + 1; j < famChows.length && !found; j++) {
+          for (let k = j + 1; k < famChows.length && !found; k++) {
             const d1 = famChows[j]! - famChows[i]!, d2 = famChows[k]! - famChows[j]!;
-            if ((d1 === 1 && d2 === 1) || (d1 === 2 && d2 === 2)) add('Trois Chows purs superposés', 16);
+            if ((d1 === 1 && d2 === 1) || (d1 === 2 && d2 === 2)) {
+              add('Trois Chows purs superposés', 16);
+              found = true;
+            }
           }
         }
       }
@@ -544,6 +552,10 @@ export function scoreHand(hand: Hand): ScoreResult {
     if (handT.every(t => isSuited(t) && [4,5,6].includes(t.value as number)))
       add('Les trois du milieu', 24);
   }
+}
+
+function score32to88pt(ctx: ScoreCtx, add: Adder): void {
+  const { hand, groups, pair, chows, pungs, kongs } = ctx;
 
   // ─── 32 POINTS ───
 
@@ -641,6 +653,49 @@ export function scoreHand(hand: Hand): ScoreResult {
     const handT = groups.flatMap(g => g.tiles).concat(pair.tiles);
     if (handT.every(t => greenTiles.has(tileKey(t)))) add('Main verte', 88);
   }
+}
+
+// ── Fonction principale ───────────────────────────────────────────────────
+
+export function scoreHand(hand: Hand): ScoreResult {
+  const results: ScoreItem[] = [];
+  function add(name: string, pts: number) {
+    if (pts > 0) results.push({ name, pts });
+  }
+
+  if (hand.specialType === '13orphans') {
+    add('Treize orphelins', 88);
+    if (hand.winBy === 'self')          add('Tout caché tiré', 4);
+    if (hand.waitType === 'pair')       add('Attente unique sur la paire', 1);
+    if (hand.waitType === 'edge')       add('Attente unique au bord', 1);
+    if (hand.waitType === 'closed')     add('Attente unique au milieu', 1);
+    hand.flowers.forEach(() => add('Fleur', 1));
+    return { items: results, total: results.reduce((s, r) => s + r.pts, 0) };
+  }
+
+  const groups   = hand.groups;
+  const pair     = hand.pair;
+  const allElems: Array<Group | Pair> = [...groups, pair];
+  const allTiles = allElems.flatMap(g => g.tiles).concat(hand.flowers);
+
+  const chows = groups.filter(g => g.type === 'chow');
+  const pungs = groups.filter(g => g.type === 'pung' || g.type === 'kong');
+  const kongs = groups.filter(g => g.type === 'kong');
+
+  const families       = new Set(allTiles.filter(isSuited).map(t => t.type));
+  const hasHonors      = allTiles.some(isHonor);
+  const nonFlowerTiles = allTiles.filter(t => t.type !== 'flower');
+
+  const ctx: ScoreCtx = {
+    hand, groups, pair, chows, pungs, kongs,
+    allElems, allTiles, nonFlowerTiles, families, hasHonors,
+  };
+
+  score1pt(ctx, add);
+  score2to4pt(ctx, add);
+  score6to8pt(ctx, add);
+  score12to24pt(ctx, add);
+  score32to88pt(ctx, add);
 
   const items = applyExclusions(results);
   // Main sans valeur : aucune combinaison → 8 pts de base (main valide mais sans points)
@@ -746,6 +801,10 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   if (has('Quadruple Chows purs')) {
     rm('Triple Chow pur'); rm('Double Chow pur'); rmPfx('4 identiques');
   }
+
+  // Par analogie avec Quatre Pungs purs consécutifs → Trois Pungs purs consécutifs,
+  // Quatre Chows purs superposés inclut Trois Chows purs superposés. À confirmer PDF p.32.
+  if (has('Quatre Chows purs superposés')) rm('Trois Chows purs superposés');
 
   // PDF p.17 — Kong caché + Kong exposé
   // PDF p.14 — Deux Kongs exposés
