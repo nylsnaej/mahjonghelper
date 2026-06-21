@@ -474,7 +474,7 @@ export function CalculatorTab() {
               <span className="palette-label">{row.lbl}</span>
               <div className="palette-tiles">
                 {row.tiles.map((t, i) => {
-                  const maxTile = t.type === 'flower' ? MAX_FLOWER : (is7pairs ? 2 : MAX_PER_TILE);
+                  const maxTile = t.type === 'flower' ? MAX_FLOWER : MAX_PER_TILE;
                   const count   = usageCount(t);
                   const dis     = count >= maxTile ? 'palette-tile-disabled' : '';
                   return (

@@ -96,7 +96,7 @@ Quand un test et le site de référence divergent d'1 pt : vérifier le PDF. Si 
 Le `CalculatorTab` a 3 modes (`CalcMode`) :
 
 - **Standard** : 4 groupes (chow/pung/kong) + paire
-- **7 Paires** : 7 slots paire, max 2 occurrences par tuile dans la palette
+- **7 Paires** : 7 slots paire, max 4 occurrences par tuile dans la palette (2 paires identiques autorisées par les règles MCR)
 - **Serpentine** : 3 sélecteurs de famille (1-4-7 / 2-5-8 / 3-6-9, auto-générés) + 4e groupe normal + paire. L'attente unique est restreinte au 4e groupe et à la paire (PDF p.25 : pas d'attente sur les groupes serpentins).
 
 ---
@@ -144,7 +144,7 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 
 - **Triple Chows double comptage** : un `Set tcFound` par valeur de départ évite de compter deux fois Triple Chows quand la main contient 2 chows de la même famille et valeur (ex. [B1,R1,Ch1,Ch1] → Triple Chows compté 1 seule fois).
 
-- **Pairages Double Chow pur vs Double Chow** : deux ensembles `used` distincts (`usedInPur` / `usedInOther`). Double Chow pur n'empêche pas la détection d'un Double Chow cross-famille sur le même chow. Ex. [C7,C7,B7] → Double Chow pur (C7+C7) + Double Chow (C7+B7).
+- **Tracking de pairages à trois niveaux indépendants** : `usedInPur` (DC pur), max matching DC seuls, max matching PSP+DCext seuls. Un chow peut simultanément être dans un DC (cross-famille) ET dans une PSP ou DCext (intra-famille) — ce sont deux propriétés indépendantes. Validé par ventdestmahjong.fr main 246 : DC(7C+7R) + PSP(4C+7C) + DCext(1R+7R) coexistent = 3 pts. Ex. [C7,C7,B7] → DC pur (C7+C7) + DC (C7+B7) toujours valides.
 
 - **Avertissement calculateur** : si la tuile gagnante vient d'un écart adverse et que le groupe qu'elle complète est un pung/kong marqué "Caché", un avertissement orange s'affiche. Raison : "Un Pung caché = 3 tuiles tirées soi-même" (PDF p.11) — un pung complété par un écart n'est pas caché.
 

@@ -122,6 +122,28 @@ interface ScoreCtx {
 
 // ── Sous-fonctions par tranche de points ──────────────────────────────────
 
+// Trouve le plus grand ensemble non-chevauchant de pairages (backtracking).
+// L'ordre d'entrée (par priorité) sert de tie-breaker : en cas d'égalité de
+// taille, les pairages à plus haute priorité (arrivés en premier) sont choisis.
+function maxChowMatching(
+  pairings: ReadonlyArray<{ name: string; i: number; j: number }>
+): Array<{ name: string; i: number; j: number }> {
+  let best: Array<{ name: string; i: number; j: number }> = [];
+  function bt(idx: number, used: Set<number>, cur: typeof best) {
+    if (cur.length + (pairings.length - idx) <= best.length) return;
+    if (idx === pairings.length) { if (cur.length > best.length) best = [...cur]; return; }
+    const p = pairings[idx]!;
+    if (!used.has(p.i) && !used.has(p.j)) {
+      used.add(p.i); used.add(p.j);
+      bt(idx + 1, used, [...cur, p]);
+      used.delete(p.i); used.delete(p.j);
+    }
+    bt(idx + 1, used, cur);
+  }
+  bt(0, new Set(), []);
+  return best;
+}
+
 function score1pt(ctx: ScoreCtx, add: Adder): void {
   const { hand, groups, chows, pungs, kongs, families, hasHonors } = ctx;
 
@@ -161,17 +183,21 @@ function score1pt(ctx: ScoreCtx, add: Adder): void {
     };
     pairings.sort((a, b) => priority[a.name]! - priority[b.name]!);
 
-    const usedInPur   = new Set<number>(); // pour Double Chow pur uniquement
-    const usedInOther = new Set<number>(); // pour tous les autres pairages
-
-    for (const p of pairings) {
-      if (p.name === 'Double Chow pur') {
-        if (usedInPur.has(p.i) || usedInPur.has(p.j)) continue;
-        usedInPur.add(p.i); usedInPur.add(p.j);
-      } else {
-        if (usedInOther.has(p.i) || usedInOther.has(p.j)) continue;
-        usedInOther.add(p.i); usedInOther.add(p.j);
-      }
+    // Double Chow pur : glouton sur son propre ensemble
+    const usedInPur = new Set<number>();
+    for (const p of pairings.filter(p => p.name === 'Double Chow pur')) {
+      if (usedInPur.has(p.i) || usedInPur.has(p.j)) continue;
+      usedInPur.add(p.i); usedInPur.add(p.j);
+      add(p.name, 1);
+    }
+    // Double Chow (cross-famille) et pairages intra-famille (PSP, DCext) utilisent
+    // des ensembles indépendants : un chow peut être dans un DC ET dans une PSP/DCext.
+    for (const p of maxChowMatching(pairings.filter(p => p.name === 'Double Chow'))) {
+      add(p.name, 1);
+    }
+    for (const p of maxChowMatching(pairings.filter(
+      p => p.name === 'Petite suite pure' || p.name === "Deux Chows purs d'extrémité"
+    ))) {
       add(p.name, 1);
     }
   }

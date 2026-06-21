@@ -36,10 +36,11 @@ describe('Mains validées par expert', () => {
   // ── #1 ────────────────────────────────────────────────────────────────────
   // [1C 2C 3C] · [4R 5R 6R] · [4C 5C 6C] · Caché[7B 8B 9B] · Paire [2B 2B] · ×2 fleurs
   // Tuile gagnante : 3C (bord) | écart | Est/Est
-  // Règle d'exclusion : Double Chow consume [4C5C6C], Petite suite pure ne doit PAS apparaître
+  // DC(R4+C4) cross-famille et PSP(C1+C4) intra-famille sont indépendants → les deux s'appliquent.
+  // (La règle "DC consume le chow" était auto-imposée, non confirmée par le PDF ni le site de référence.)
   // Sans honneurs exclu par Tout Chow (PDF p.11)
-  // Score → Grande suite +8 | Tout Chow +2 | Double Chow +1 | Attente bord +1 | ×2 Fleurs = 14 pts
-  test('[14 pts] Grande suite + Double Chow, exclusion Petite suite pure + Sans honneurs', () => {
+  // Score → Grande suite +8 | Tout Chow +2 | Double Chow +1 | Petite suite pure +1 | Attente bord +1 | ×2 Fleurs = 15 pts
+  test('[15 pts] Grande suite + Double Chow + Petite suite pure (DC et PSP indépendants)', () => {
     const hand = makeHand({
       groups: [
         { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: false },
@@ -53,13 +54,13 @@ describe('Mains validées par expert', () => {
       waitType: 'edge',
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(14);
+    expect(total).toBe(15);
     expectHas(items, 'Grande suite',           8);
     expectHas(items, 'Tout Chow',              2);
     expectHas(items, 'Double Chow',            1);
+    expectHas(items, 'Petite suite pure',      1);
     expectHas(items, 'Attente unique au bord', 1);
     expectNotHas(items, 'Sans honneurs');
-    expectNotHas(items, 'Petite suite pure');
   });
 
   // ── #2 ────────────────────────────────────────────────────────────────────
@@ -656,6 +657,42 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Tout Pung',               6);
     expectHas(items, 'Trois Pungs consécutifs', 8);
     expectNotHas(items, 'Sans honneurs');
+  });
+
+  // ── #22bis / main 246 ventdest ───────────────────────────────────────────
+  // Chow caché [4C 5C 6C] · Chow caché [7C 8C 9C] · Chow caché [1R 2R 3R] · Chow caché [7R 8R 9R] · Paire [3R 3R]
+  // Tuile gagnante : 8R (attente milieu) | écart | Est/Est
+  // Référence : ventdestmahjong.fr/fr/checkpoints.php main 246 → 9 pts
+  // Pairages : DC(7C+7R cross-famille), PSP(4C+7C intra-char), DCext(1R+7R intra-circle)
+  //   DC et PSP/DCext utilisent des ensembles indépendants → les 3 pairages coexistent.
+  //   7C est dans DC (cross-famille) ET dans PSP (intra-char) → valide sous le modèle à tracking séparé.
+  //   7R est dans DC (cross-famille) ET dans DCext (intra-circle) → valide.
+  // Score → Double Chow +1 | Petite suite pure +1 | Deux Chows purs d'extrémité +1
+  //          | Une famille absente +1 | Attente unique au milieu +1 | Tout caché donné +2 | Tout Chow +2 = 9 pts
+  test("[9 pts] Main 246 : DC + PSP + DCext coexistent (tracking cross-famille / intra-famille séparés)", () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [C(4), C(5), C(6)], hidden: true  }, // chow0 char start=4
+        { type: 'chow', tiles: [C(7), C(8), C(9)], hidden: true  }, // chow1 char start=7
+        { type: 'chow', tiles: [R(1), R(2), R(3)], hidden: true  }, // chow2 circle start=1
+        { type: 'chow', tiles: [R(7), R(9), R(8)], hidden: true  }, // chow3 circle start=7 (ordre saisie)
+      ],
+      pair:    { tiles: [R(3), R(3)], hidden: false },
+      winTile:  R(8),
+      waitType: 'closed',
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(9);
+    expectHas(items, 'Double Chow',                    1);
+    expectHas(items, 'Petite suite pure',               1);
+    expectHas(items, "Deux Chows purs d'extrémité",    1);
+    expectHas(items, 'Une famille absente',              1);
+    expectHas(items, 'Attente unique au milieu',         1);
+    expectHas(items, 'Tout caché donné',                2);
+    expectHas(items, 'Tout Chow',                       2);
   });
 
   // ── #23 ───────────────────────────────────────────────────────────────────
