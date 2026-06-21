@@ -146,7 +146,7 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 
 - **Tracking de pairages à trois niveaux indépendants** : `usedInPur` (DC pur), max matching DC seuls, max matching PSP+DCext seuls. Un chow peut simultanément être dans un DC (cross-famille) ET dans une PSP ou DCext (intra-famille) — ce sont deux propriétés indépendantes. Validé par ventdestmahjong.fr main 246 : DC(7C+7R) + PSP(4C+7C) + DCext(1R+7R) coexistent = 3 pts. Ex. [C7,C7,B7] → DC pur (C7+C7) + DC (C7+B7) toujours valides.
 
-- **Avertissement calculateur** : si la tuile gagnante vient d'un écart adverse et que le groupe qu'elle complète est un pung/kong marqué "Caché", un avertissement orange s'affiche. Raison : "Un Pung caché = 3 tuiles tirées soi-même" (PDF p.11) — un pung complété par un écart n'est pas caché.
+- **Pung caché + victoire par écart** : un pung complété par la tuile gagnante (écart adverse) est bien "caché" — le joueur n'a jamais déclaré ce groupe pendant la partie. Seul un pung déclaré exposé lors d'un tour non-gagnant est "exposé". L'avertissement qui signalait le contraire a été supprimé (il reposait sur une interprétation incorrecte de "3 tuiles tirées soi-même").
 
 ---
 
