@@ -781,7 +781,11 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
 
   // PDF p.46 — Tout extrémité
   // → « Les points pour « Tout Pung », « Pung d'extrémité », « Sans honneur » sont inclus »
-  if (has('Tout extrémité')) { rm('Tout Pung'); rmPfx("Pung d'extrémité"); }
+  // PDF p.40 (remarque Tout honneur et extrémité) : « S'il n'y a que des extrémités → Tout extrémité »
+  if (has('Tout extrémité')) {
+    rm('Tout Pung'); rmPfx("Pung d'extrémité");
+    rm('Tout honneur et extrémité'); rm('Extrémité ou honneur partout');
+  }
 
   // PDF p.40 — Tout honneur et extrémité
   // → inclut Tout Pung, Extrémité ou honneur partout, et tous les points à 1pt

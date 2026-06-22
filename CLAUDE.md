@@ -79,7 +79,7 @@ Catalogue structuré des règles avec :
 
 ## Tests de régression
 
-`src/tests/combinations.test.ts` — 20 tests (2026-06-18).
+`src/tests/combinations.test.ts` — 43 tests (2026-06-22).
 
 Chaque test représente une main validée par une source externe (site de référence ou expert). Format :
 - Commentaire avec la main, la tuile gagnante, le contexte
@@ -118,7 +118,7 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 | Les quatre premiers/derniers, Les trois premiers/derniers/du milieu, Tout Pung paire, Tout extrémité, Tout honneur et extrémité | Sans honneurs |
 | Les trois du milieu | Tout ordinaire |
 | Tout Pung paire | Tout Pung, Tout ordinaire |
-| Tout extrémité | Tout Pung, Pung d'extrémité (tous) |
+| Tout extrémité | Tout Pung, Pung d'extrémité (tous), Tout honneur et extrémité, Extrémité ou honneur partout |
 | Tout honneur et extrémité | Tout Pung, Extrémité ou honneur partout, Pung de Vent (tous), Pung d'extrémité (tous) |
 | Tout honneur | Tout Pung, Pung de Vent (tous) |
 | Quatre petits Vents | Pung de Vent (tous) |

@@ -790,4 +790,32 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Deux Pungs cachés',    2);
     expectNotHas(items, 'Trois Pungs cachés');
   });
+
+  // ── #26 ───────────────────────────────────────────────────────────────────
+  // Pung [1B 1B 1B] · Pung [9R 9R 9R] · Pung caché [1R 1R 1R] · Pung caché [9B 9B 9B] · Paire [9C 9C]
+  // Tuile gagnante : 9B | écart adverse
+  // Référence : ventdestmahjong.fr main 124
+  // PDF p.40 (remarque Tout honneur et extrémité) : « S'il n'y a que des extrémités → Tout extrémité »
+  //   → Tout extrémité exclut Tout honneur et extrémité (sous-ensemble inclus par définition)
+  // PDF p.11 : pung 9B complété par l'écart gagnant → NON "caché". cachéPungs = [1R] = 1 seul.
+  // Score → Tout extrémité +64 | Double Pung +2 | Double Pung +2 = 68 pts
+  test('[68 pts] Tout extrémité exclut Tout honneur et extrémité, main 124 ventdestmahjong.fr', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('bamboo',1),    makeTile('bamboo',1),    makeTile('bamboo',1)   ], hidden: false },
+        { type: 'pung', tiles: [makeTile('circle',9),    makeTile('circle',9),    makeTile('circle',9)   ], hidden: false },
+        { type: 'pung', tiles: [makeTile('circle',1),    makeTile('circle',1),    makeTile('circle',1)   ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('bamboo',9),    makeTile('bamboo',9),    makeTile('bamboo',9)   ], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('character',9), makeTile('character',9)], hidden: false },
+      winTile:  makeTile('bamboo', 9),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(68);
+    expectHas(items, 'Tout extrémité',  64);
+    expectHas(items, 'Double Pung',      4); // 2×2 pts
+    expectNotHas(items, 'Tout honneur et extrémité');
+    expectNotHas(items, 'Tout Pung');
+  });
 });
