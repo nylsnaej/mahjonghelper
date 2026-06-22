@@ -92,10 +92,11 @@ describe('Mains validées par expert', () => {
   // ── #3 ────────────────────────────────────────────────────────────────────
   // Pung[7C×3] · Pung[3C×3] · CachéPung[Vert×3] · CachéPung[Rouge×3] · Paire[Est×2] · ×1 fleur
   // Tuile gagnante : Rouge | écart | Est/Est
-  // "Deux Dragons" subsume les "Pung de Dragon" individuels
-  // Expert → Deux Dragons +6 | Deux Pungs cachés +2 | Tout Pung +6 | Semi pure +6 | Fleur +1 = 21 pts
-  // (l'expert avait oublié Deux Pungs cachés et annonçait 19 pts)
-  test('[Expert 21 pts] Deux Dragons subsume Pung de Dragon individuels', () => {
+  // "Deux Dragons" subsume les "Pung de Dragon" individuels.
+  // PDF p.11 : "Un Pung caché = 3 tuiles tirées soi-même" → le pung Rouge (complété par l'écart
+  //   gagnant) n'est PAS "caché". Seul le pung Vert compte → 1 seul pung caché, pas de Deux Pungs cachés.
+  // Score → Deux Dragons +6 | Tout Pung +6 | Semi pure +6 | Fleur +1 = 19 pts
+  test('[19 pts] Deux Dragons subsume Pung de Dragon individuels (pung gagnant par écart = non caché)', () => {
     const C = (v: number): Tile => makeTile('character', v);
     const hand = makeHand({
       groups: [
@@ -109,12 +110,12 @@ describe('Mains validées par expert', () => {
       winTile:  makeTile('dragon','R'),
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(21);
+    expect(total).toBe(19);
     expectHas(items, 'Deux Dragons',      6);
-    expectHas(items, 'Deux Pungs cachés', 2);
     expectHas(items, 'Tout Pung',         6);
     expectHas(items, 'Semi pure',         6);
     expectHas(items, 'Fleur',             1);
+    expectNotHas(items, 'Deux Pungs cachés');
     expectNotHas(items, 'Pung de Dragon (Vert)');
     expectNotHas(items, 'Pung de Dragon (Rouge)');
   });
@@ -211,12 +212,12 @@ describe('Mains validées par expert', () => {
   // ── #8 ────────────────────────────────────────────────────────────────────
   // Pung [4B 4B 4B] · Pung [6C 6C 6C] · Pung caché [7B 7B 7B] · Pung caché [2B 2B 2B] · Paire [4R 4R]
   // Tuile gagnante : 2B | écart | Est/Est
-  // Référence : ventdestmahjong.fr exemple 233 (Tout Pung 6 + Tout ordinaire 2 = 8)
-  // Note : site de référence omet "Deux Pungs cachés" — PDF p.11 dit explicitement
-  //        « peut se cumuler avec les points des Pungs » → on le compte.
-  //        "Sans honneurs" exclu par "Tout ordinaire" (PDF p.12, sous-ensemble).
-  // Notre score → Tout Pung +6 | Tout ordinaire +2 | Deux Pungs cachés +2 = 10 pts
-  test('[10 pts] Tout Pung + Tout ordinaire, exclusion Sans honneurs', () => {
+  // Référence : ventdestmahjong.fr exemple 233 → Tout Pung +6 | Tout ordinaire +2 = 8 pts (correct)
+  // PDF p.11 : le pung 2B est complété par l'écart gagnant → NON "caché". Seul le pung 7B compte.
+  //   1 seul pung caché → "Deux Pungs cachés" ne s'applique pas. Le site avait raison.
+  //   "Sans honneurs" exclu par "Tout ordinaire" (PDF p.12, sous-ensemble).
+  // Score → Tout Pung +6 | Tout ordinaire +2 = 8 pts
+  test('[8 pts] Tout Pung + Tout ordinaire, exclusion Sans honneurs (pung gagnant par écart = non caché)', () => {
     const hand = makeHand({
       groups: [
         { type: 'pung', tiles: [makeTile('bamboo',4),    makeTile('bamboo',4),    makeTile('bamboo',4)   ], hidden: false },
@@ -229,10 +230,10 @@ describe('Mains validées par expert', () => {
       winBy:    'discard',
     });
     const { items, total } = scoreHand(hand);
-    expect(total).toBe(10);
+    expect(total).toBe(8);
     expectHas(items, 'Tout Pung',         6);
     expectHas(items, 'Tout ordinaire',    2);
-    expectHas(items, 'Deux Pungs cachés', 2);
+    expectNotHas(items, 'Deux Pungs cachés');
     expectNotHas(items, 'Sans honneurs');
   });
 
@@ -726,5 +727,67 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Quatre Chows purs superposés', 32);
     expectNotHas(items, 'Trois Chows purs superposés');
     expectNotHas(items, 'Sans honneurs');
+  });
+
+  // ── #24 ───────────────────────────────────────────────────────────────────
+  // Chow caché [4C 5C 6C] · Chow caché [7C 8C 9C] · Chow caché [1R 2R 3R] · Chow caché [7R 8R 9R]
+  // Paire [3R 3R] · Tuile gagnante : 8R | attente milieu | écart
+  // Référence : ventdestmahjong.fr main 246 → 9 pts
+  // DC cross-famille (7C+7R) + PSP intra-C (4C+7C) + DCext intra-R (1R+7R) : pools indépendants → tous coexistent
+  // Score → Double Chow +1 | Petite suite pure +1 | Deux Chows purs d'extrémité +1
+  //          | Une famille absente +1 | Attente unique au milieu +1 | Tout caché donné +2 | Tout Chow +2 = 9 pts
+  test('[9 pts] DC + PSP + DCext coexistent (pools indépendants), main 246 ventdestmahjong.fr', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [C(4), C(5), C(6)], hidden: true  },
+        { type: 'chow', tiles: [C(7), C(8), C(9)], hidden: true  },
+        { type: 'chow', tiles: [R(1), R(2), R(3)], hidden: true  },
+        { type: 'chow', tiles: [R(7), R(8), R(9)], hidden: true  },
+      ],
+      pair:    { tiles: [R(3), R(3)], hidden: false },
+      winTile:  R(8),
+      winBy:   'discard',
+      waitType: 'closed',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(9);
+    expectHas(items, 'Double Chow',                   1);
+    expectHas(items, 'Petite suite pure',              1);
+    expectHas(items, "Deux Chows purs d'extrémité",   1);
+    expectHas(items, 'Une famille absente',             1);
+    expectHas(items, 'Attente unique au milieu',        1);
+    expectHas(items, 'Tout caché donné',               2);
+    expectHas(items, 'Tout Chow',                      2);
+  });
+
+  // ── #25 ───────────────────────────────────────────────────────────────────
+  // Chow caché [3R 4R 5R] · Pung caché [Vert×3] · Pung caché [Rouge×3] · Pung caché [9B×3] · Paire [4B×2]
+  // Tuile gagnante : 9B | écart adverse
+  // Référence : ventdestmahjong.fr → 11 pts (omet Pung d'extrémité — possible bug site)
+  // PDF p.11 : 9B pung complété par l'écart gagnant → NON "caché". cachéPungs = [Vert, Rouge] = 2.
+  //   → "Trois Pungs cachés" ne s'applique pas ; "Deux Pungs cachés" ✓
+  // Score → Une famille absente +1 | Pung d'extrémité 9B +1 | Tout caché donné +2
+  //          | Deux Dragons +6 | Deux Pungs cachés +2 = 12 pts
+  test('[12 pts] Deux Pungs cachés (pas trois : pung 9B complété par écart)', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('circle',3),  makeTile('circle',4),  makeTile('circle',5) ], hidden: true },
+        { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G')], hidden: true },
+        { type: 'pung', tiles: [makeTile('dragon','R'), makeTile('dragon','R'), makeTile('dragon','R')], hidden: true },
+        { type: 'pung', tiles: [makeTile('bamboo',9),  makeTile('bamboo',9),  makeTile('bamboo',9) ], hidden: true },
+      ],
+      pair:    { tiles: [makeTile('bamboo',4), makeTile('bamboo',4)], hidden: false },
+      winTile:  makeTile('bamboo', 9),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(12);
+    expectHas(items, 'Une famille absente',  1);
+    expectHas(items, 'Tout caché donné',     2);
+    expectHas(items, 'Deux Dragons',         6);
+    expectHas(items, 'Deux Pungs cachés',    2);
+    expectNotHas(items, 'Trois Pungs cachés');
   });
 });

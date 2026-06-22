@@ -118,6 +118,10 @@ interface ScoreCtx {
   nonFlowerTiles: Tile[];
   families: Set<string>;
   hasHonors: boolean;
+  // Pungs effectivement "cachés" pour les combinaisons Deux/Trois/Quatre Pungs cachés.
+  // PDF p.11 : un Pung caché = 3 tuiles tirées soi-même. Si la tuile gagnante vient
+  // d'un écart (et non tirée soi-même), le pung qu'elle complète n'est pas "caché".
+  cachéPungs: Group[];
 }
 
 // ── Sous-fonctions par tranche de points ──────────────────────────────────
@@ -280,10 +284,7 @@ function score2to4pt(ctx: ScoreCtx, add: Adder): void {
 
   if (chows.length + groups.filter(g => g.type === 'snake').length === 4 && !hasHonors) add('Tout Chow', 2);
 
-  {
-    const hiddenPungs = pungs.filter(g => g.hidden).length;
-    if (hiddenPungs >= 2) add('Deux Pungs cachés', 2);
-  }
+  if (ctx.cachéPungs.length >= 2) add('Deux Pungs cachés', 2);
 
   kongs.filter(g => g.hidden).forEach(g => {
     const t = g.tiles[0];
@@ -501,10 +502,7 @@ function score12to24pt(ctx: ScoreCtx, add: Adder): void {
     }
   }
 
-  {
-    const hiddenPungs = pungs.filter(g => g.hidden).length;
-    if (hiddenPungs >= 3) add('Trois Pungs cachés', 16);
-  }
+  if (ctx.cachéPungs.length >= 3) add('Trois Pungs cachés', 16);
 
   {
     const ok = allElems.every(g => g.tiles.some(t => isSuited(t) && t.value === 5));
@@ -627,10 +625,7 @@ function score32to88pt(ctx: ScoreCtx, add: Adder): void {
 
   // ─── 64 POINTS ───
 
-  {
-    const hiddenPungs = pungs.filter(g => g.hidden).length;
-    if (hiddenPungs >= 4) add('Quatre Pungs cachés', 64);
-  }
+  if (ctx.cachéPungs.length >= 4) add('Quatre Pungs cachés', 64);
 
   {
     const dragonPungs = pungs.filter(g => g.tiles[0]?.type === 'dragon').length;
@@ -712,9 +707,19 @@ export function scoreHand(hand: Hand): ScoreResult {
   const hasHonors      = allTiles.some(isHonor);
   const nonFlowerTiles = allTiles.filter(t => t.type !== 'flower');
 
+  // Un Pung caché = 3 tuiles tirées soi-même (PDF p.11).
+  // Si la tuile gagnante vient d'un écart, le pung qu'elle complète n'est pas "caché".
+  const winT = hand.winTile;
+  const cachéPungs = pungs.filter(g =>
+    g.hidden && !(
+      hand.winBy === 'discard' && winT &&
+      g.tiles.some(t => t.type === winT.type && t.value === winT.value)
+    )
+  );
+
   const ctx: ScoreCtx = {
     hand, groups, pair, chows, pungs, kongs,
-    allElems, allTiles, nonFlowerTiles, families, hasHonors,
+    allElems, allTiles, nonFlowerTiles, families, hasHonors, cachéPungs,
   };
 
   score1pt(ctx, add);
