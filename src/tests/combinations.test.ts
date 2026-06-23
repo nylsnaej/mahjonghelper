@@ -818,4 +818,34 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Tout honneur et extrémité');
     expectNotHas(items, 'Tout Pung');
   });
+
+  // ── #27 ───────────────────────────────────────────────────────────────────
+  // Pung [Vert×3] · Pung caché [Blanc×3] · Pung caché [9B×3] · Pung caché [Rouge×3] · Paire [3C×2]
+  // Tuile gagnante : Rouge | écart adverse
+  // Référence : ventdestmahjong.fr
+  // PDF p.51 — Trois grands Dragons : « Pung de Dragon inclus par définition », exemple = 88+1 seult
+  //   → Deux Dragons exclu. Site omet Pung d'extrémité(9B) — 1 pt d'écart, probablement bug site.
+  // PDF p.11 : Rouge pung complété par écart → NON caché. cachéPungs = [Blanc, 9B] = 2.
+  // Score → Pung d'extrémité (9B) +1 | Une famille absente +1 | Deux Pungs cachés +2
+  //          | Tout Pung +6 | Trois grands Dragons +88 = 98 pts
+  test('[98 pts] Trois grands Dragons exclut Deux Dragons, main ventdestmahjong.fr', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G')], hidden: false },
+        { type: 'pung', tiles: [makeTile('dragon','W'), makeTile('dragon','W'), makeTile('dragon','W')], hidden: true  },
+        { type: 'pung', tiles: [makeTile('bamboo',9),   makeTile('bamboo',9),   makeTile('bamboo',9)  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('dragon','R'), makeTile('dragon','R'), makeTile('dragon','R')], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('character',3), makeTile('character',3)], hidden: false },
+      winTile:  makeTile('dragon', 'R'),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(98);
+    expectHas(items, 'Trois grands Dragons',    88);
+    expectHas(items, 'Tout Pung',                6);
+    expectHas(items, 'Deux Pungs cachés',        2);
+    expectHas(items, 'Une famille absente',       1);
+    expectNotHas(items, 'Deux Dragons');
+  });
 });

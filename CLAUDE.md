@@ -79,7 +79,7 @@ Catalogue structuré des règles avec :
 
 ## Tests de régression
 
-`src/tests/combinations.test.ts` — 43 tests (2026-06-22).
+`src/tests/combinations.test.ts` — 44 tests (2026-06-23).
 
 Chaque test représente une main validée par une source externe (site de référence ou expert). Format :
 - Commentaire avec la main, la tuile gagnante, le contexte
@@ -123,6 +123,7 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 | Tout honneur | Tout Pung, Pung de Vent (tous) |
 | Quatre petits Vents | Pung de Vent (tous) |
 | Quatre Pungs purs consécutifs | Tout Pung, Trois Pungs purs consécutifs |
+| Trois grands Dragons | Deux Dragons |
 | Trois Pungs cachés | Deux Pungs cachés |
 | Quatre Pungs cachés | Tout Pung, Tout caché donné, Trois Pungs cachés, Deux Pungs cachés |
 | Quadruple Chows purs | Triple Chow pur, Double Chow pur, 4 identiques (tous) |
@@ -154,4 +155,3 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 
 - **Triple Pung exclut-il Double Pung ?** Non confirmé dans le PDF
 - **Trois petits Dragons exclut-il Deux Dragons ?** Non vérifié
-- **Trois grands Dragons** : exclusions non vérifiées

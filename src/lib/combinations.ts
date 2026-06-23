@@ -851,6 +851,12 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   if (has('Deux Kongs exposés'))        rmPfx('Kong exposé (');
   if (has('2 Kongs cachés'))            rmPfx('Kong caché (');
 
+  // PDF p.51 — Trois grands Dragons
+  // → « Les points pour « Pung de Dragon » sont inclus, par définition. »
+  //   L'exemple (88 + Une famille absente = 89 pts) ne liste jamais « Deux Dragons »
+  //   malgré 3 pungs de dragon → Deux Dragons est subsumé.
+  if (has('Trois grands Dragons')) rm('Deux Dragons');
+
   // PDF p.16 — Tout exposé
   // → « le point pour attente sur la paire est inclus »
   if (has('Tout exposé')) rm('Attente unique sur la paire');
