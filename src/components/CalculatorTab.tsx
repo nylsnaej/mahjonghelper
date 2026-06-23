@@ -301,6 +301,13 @@ export function CalculatorTab() {
       const pairGroups = state.groups
         .map((g, i) => i === winIdx ? null : { type: 'pair7' as const, tiles: g.tiles, hidden: true })
         .filter((g): g is NonNullable<typeof g> => g !== null);
+      const allPairTiles = [...pairGroups.flatMap(g => g.tiles), ...winSlot.tiles];
+      const pairSuits = new Set(allPairTiles.map(t => t.type));
+      const isSuited = pairSuits.size === 1 && ['bamboo', 'circle', 'character'].includes([...pairSuits][0]!);
+      const isConsecPure = isSuited && (() => {
+        const vals = [...new Set(allPairTiles.map(t => t.value as number))].sort((a, b) => a - b);
+        return vals.length === 7 && vals[6]! - vals[0]! === 6;
+      })();
       const hand: Hand = {
         groups: pairGroups,
         pair:    { tiles: winSlot.tiles, hidden: true },
@@ -311,7 +318,7 @@ export function CalculatorTab() {
         windRound: ctx.windRound, windPlayer: ctx.windPlayer,
         isLastTile: ctx.isLastTile, isLastDiscard: ctx.isLastDiscard,
         isStolenKong: ctx.isStolenKong, isAfterKong: ctx.isAfterKong, isLastExisting: ctx.isLastExisting,
-        specialType: '7pairs',
+        specialType: isConsecPure ? '7pairs_consec' : '7pairs',
       };
       const { items, total } = scoreHand(hand);
       setResult({ ok: true, hand, items, total });

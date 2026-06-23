@@ -851,6 +851,10 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   if (has('Deux Kongs exposés'))        rmPfx('Kong exposé (');
   if (has('2 Kongs cachés'))            rmPfx('Kong caché (');
 
+  // PDF p.48 — Sept paires pures consécutives
+  // → « Les points pour « Main pure », « Sept paires », « Tout caché donné » sont inclus. »
+  if (has('Sept paires pures consécutives')) { rm('Main pure'); rm('Sept paires'); rm('Tout caché donné'); }
+
   // PDF p.51 — Trois grands Dragons
   // → « Les points pour « Pung de Dragon » sont inclus, par définition. »
   //   L'exemple (88 + Une famille absente = 89 pts) ne liste jamais « Deux Dragons »

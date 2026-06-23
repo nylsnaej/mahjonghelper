@@ -848,4 +848,34 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Une famille absente',       1);
     expectNotHas(items, 'Deux Dragons');
   });
+
+  // ── #28 ───────────────────────────────────────────────────────────────────
+  // Sept paires [2R 3R 4R 5R 6R 7R 8R] — tuile gagnante 8R | écart adverse
+  // Référence : ventdestmahjong.fr → Sept paires pures consécutives 88 + Tout ordinaire 2 = 90 pts
+  // PDF p.48 — Sept paires pures consécutives : « Main pure, Sept paires, Tout caché donné inclus »
+  // Score → Tout ordinaire +2 | Sept paires pures consécutives +88 = 90 pts
+  test('[90 pts] Sept paires pures consécutives (2R→8R), main ventdestmahjong.fr', () => {
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pair7', tiles: [R(2), R(2)], hidden: true },
+        { type: 'pair7', tiles: [R(3), R(3)], hidden: true },
+        { type: 'pair7', tiles: [R(4), R(4)], hidden: true },
+        { type: 'pair7', tiles: [R(5), R(5)], hidden: true },
+        { type: 'pair7', tiles: [R(6), R(6)], hidden: true },
+        { type: 'pair7', tiles: [R(7), R(7)], hidden: true },
+      ],
+      pair:     { tiles: [R(8), R(8)], hidden: true },
+      winTile:   R(8),
+      winBy:    'discard',
+      specialType: '7pairs_consec',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(90);
+    expectHas(items, 'Sept paires pures consécutives', 88);
+    expectHas(items, 'Tout ordinaire',                  2);
+    expectNotHas(items, 'Sept paires');
+    expectNotHas(items, 'Main pure');
+    expectNotHas(items, 'Tout caché donné');
+  });
 });
