@@ -79,7 +79,7 @@ Catalogue structuré des règles avec :
 
 ## Tests de régression
 
-`src/tests/combinations.test.ts` — 45 tests (2026-06-23).
+`src/tests/combinations.test.ts` — 46 tests (2026-06-24).
 
 Chaque test représente une main validée par une source externe (site de référence ou expert). Format :
 - Commentaire avec la main, la tuile gagnante, le contexte
@@ -123,6 +123,7 @@ Le `CalculatorTab` a 3 modes (`CalcMode`) :
 | Tout honneur | Tout Pung, Pung de Vent (tous) |
 | Quatre petits Vents | Pung de Vent (tous) |
 | Quatre Pungs purs consécutifs | Tout Pung, Trois Pungs purs consécutifs |
+| Symétrie | Une famille absente |
 | Sept paires pures consécutives | Main pure, Sept paires, Tout caché donné |
 | Trois grands Dragons | Deux Dragons |
 | Trois Pungs cachés | Deux Pungs cachés |

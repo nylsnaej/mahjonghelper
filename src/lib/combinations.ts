@@ -851,6 +851,12 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   if (has('Deux Kongs exposés'))        rmPfx('Kong exposé (');
   if (has('2 Kongs cachés'))            rmPfx('Kong caché (');
 
+  // PDF p.21 — Symétrie
+  // → « Le point pour « famille absente » (caractère) est inclus »
+  //   Les tuiles symétriques n'existent que dans les familles bambou et cercle → caractère
+  //   toujours absent par définition.
+  if (has('Symétrie')) rm('Une famille absente');
+
   // PDF p.48 — Sept paires pures consécutives
   // → « Les points pour « Main pure », « Sept paires », « Tout caché donné » sont inclus. »
   if (has('Sept paires pures consécutives')) { rm('Main pure'); rm('Sept paires'); rm('Tout caché donné'); }

@@ -849,6 +849,32 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Deux Dragons');
   });
 
+  // ── #29 ───────────────────────────────────────────────────────────────────
+  // Pung [9R×3] · Pung [8B×3] · Pung [5B×3] · Pung caché [2B×3] · Paire [2R×2]
+  // Tuile gagnante : 2B | tiré soi-même
+  // Référence : ventdestmahjong.fr — n'inclut pas "Une famille absente"
+  // PDF p.21 — Symétrie : « le point pour famille absente (caractère) est inclus »
+  //   Les tuiles symétriques n'existent qu'en bambou et cercle → caractère absent par définition.
+  // Score → Sans honneurs +1 | Tirer soi-même +1 | Pung d'extrémité (9R) +1 | Tout Pung +6 | Symétrie +8 = 17 pts
+  test('[17 pts] Symétrie exclut Une famille absente (PDF p.21)', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('circle',9),  makeTile('circle',9),  makeTile('circle',9) ], hidden: false },
+        { type: 'pung', tiles: [makeTile('bamboo',8),  makeTile('bamboo',8),  makeTile('bamboo',8) ], hidden: false },
+        { type: 'pung', tiles: [makeTile('bamboo',5),  makeTile('bamboo',5),  makeTile('bamboo',5) ], hidden: false },
+        { type: 'pung', tiles: [makeTile('bamboo',2),  makeTile('bamboo',2),  makeTile('bamboo',2) ], hidden: true  },
+      ],
+      pair:    { tiles: [makeTile('circle',2), makeTile('circle',2)], hidden: false },
+      winTile:  makeTile('bamboo', 2),
+      winBy:   'self',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(17);
+    expectHas(items, 'Symétrie',              8);
+    expectHas(items, 'Tout Pung',             6);
+    expectNotHas(items, 'Une famille absente');
+  });
+
   // ── #28 ───────────────────────────────────────────────────────────────────
   // Sept paires [2R 3R 4R 5R 6R 7R 8R] — tuile gagnante 8R | écart adverse
   // Référence : ventdestmahjong.fr → Sept paires pures consécutives 88 + Tout ordinaire 2 = 90 pts
