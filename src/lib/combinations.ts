@@ -262,7 +262,8 @@ function score2to4pt(ctx: ScoreCtx, add: Adder): void {
 
   {
     const allHidden = groups.every(g => g.hidden);
-    if (allHidden && hand.winBy === 'discard' && hand.specialType !== '7pairs')
+    if (allHidden && hand.winBy === 'discard' &&
+        hand.specialType !== '7pairs' && hand.specialType !== '7pairs_consec')
       add('Tout caché donné', 2);
   }
 
@@ -488,15 +489,18 @@ function score12to24pt(ctx: ScoreCtx, add: Adder): void {
   }
 
   {
-    for (let i = 0; i < pungs.length; i++) {
-      for (let j = i + 1; j < pungs.length; j++) {
-        for (let k = j + 1; k < pungs.length; k++) {
+    let found = false;
+    for (let i = 0; i < pungs.length && !found; i++) {
+      for (let j = i + 1; j < pungs.length && !found; j++) {
+        for (let k = j + 1; k < pungs.length && !found; k++) {
           const pa = pungs[i].tiles[0], pb = pungs[j].tiles[0], pc = pungs[k].tiles[0];
           if (!pa || !pb || !pc) continue;
           const types = new Set([pa.type, pb.type, pc.type]);
           if (isSuited(pa) && isSuited(pb) && isSuited(pc) && types.size === 3 &&
-              pa.value === pb.value && pb.value === pc.value)
+              pa.value === pb.value && pb.value === pc.value) {
             add('Triple Pung', 16);
+            found = true;
+          }
         }
       }
     }
