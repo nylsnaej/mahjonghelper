@@ -150,7 +150,7 @@ describe('CalculatorTab — ajout et suppression de tuiles', () => {
 
 describe('CalculatorTab — contexte de jeu', () => {
   test('switch "Tiré soi-même" change le bouton actif', () => {
-    const { container } = render(<CalculatorTab />);
+    render(<CalculatorTab />);
     const selfBtn = screen.getByText('Tiré soi-même');
     fireEvent.click(selfBtn);
     expect(selfBtn.classList.contains('active')).toBe(true);

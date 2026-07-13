@@ -1128,4 +1128,59 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Tout Chow',               2);
     expectHas(items, 'Trois Chows superposés',  6);
   });
+
+  // ── #38 ───────────────────────────────────────────────────────────────────
+  // Chow [2C 3C 4C] · Chow [3B 4B 5B] · Chow caché [4R 5R 6R] · Chow caché [7C 8C 9C] · Paire [2R 2R]
+  // Tuile gagnante : 8C (milieu du chow 7-8-9)
+  // Score attendu : Attente unique au milieu +1 | Tout Chow +2 | Trois Chows superposés +6 = 9 pts
+  // Erreur site : "Tout ordinaire" à la place de "Attente unique au milieu" — 9C est une extrémité,
+  // donc la condition "toutes tuiles 2-8" n'est pas remplie. Notre moteur est correct.
+  test('[9 pts] Attente milieu + Trois Chows superposés (site: erreur Tout ordinaire)', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('character',2), makeTile('character',3), makeTile('character',4)], hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',3),    makeTile('bamboo',4),    makeTile('bamboo',5)   ], hidden: false },
+        { type: 'chow', tiles: [makeTile('circle',4),    makeTile('circle',5),    makeTile('circle',6)   ], hidden: true  },
+        { type: 'chow', tiles: [makeTile('character',7), makeTile('character',8), makeTile('character',9)], hidden: true  },
+      ],
+      pair:     { tiles: [makeTile('circle',2), makeTile('circle',2)], hidden: false },
+      winTile:  makeTile('character', 8),
+      winBy:    'discard',
+      waitType: 'closed',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(9);
+    expectHas(items, 'Attente unique au milieu', 1);
+    expectHas(items, 'Tout Chow',               2);
+    expectHas(items, 'Trois Chows superposés',  6);
+    expectNotHas(items, 'Tout ordinaire');
+  });
+
+  // ── #39 ───────────────────────────────────────────────────────────────────
+  // Chow caché [1C 2C 3C] · Chow caché [7C 8C 9C] · Chow caché [5R 6R 7R] · Chow caché [4C 5C 6C] · Paire [8R 8R]
+  // Tuile gagnante : 4C (deux côtés depuis [5C 6C], waitType null)
+  // Tous les groupes sont cachés (victoire en tirant soi-même, aucun groupe déclaré)
+  // → "Tout caché tiré" +4 (remplace "Tirer soi-même" +1 quand allHidden + self-draw, PDF p.6 + p.14)
+  // Site : Grande suite pure +16 | Tout caché tiré +4 | Tout Chow +2 | Une famille absente +1 = 23 pts
+  test('[23 pts] Grande suite pure + Tout caché tiré (tous cachés, self-draw)', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: true },
+        { type: 'chow', tiles: [makeTile('character',7), makeTile('character',8), makeTile('character',9)], hidden: true },
+        { type: 'chow', tiles: [makeTile('circle',5),    makeTile('circle',6),    makeTile('circle',7)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('character',4), makeTile('character',5), makeTile('character',6)], hidden: true },
+      ],
+      pair:     { tiles: [makeTile('circle',8), makeTile('circle',8)], hidden: false },
+      winTile:  makeTile('character', 4),
+      winBy:    'self',
+      waitType: null,
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(23);
+    expectHas(items, 'Grande suite pure',   16);
+    expectHas(items, 'Tout caché tiré',      4);
+    expectHas(items, 'Tout Chow',            2);
+    expectHas(items, 'Une famille absente',  1);
+    expectNotHas(items, 'Tirer soi-même');
+  });
 });
