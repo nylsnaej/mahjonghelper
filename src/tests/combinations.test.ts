@@ -904,4 +904,228 @@ describe('Mains validées par expert', () => {
     expectNotHas(items, 'Main pure');
     expectNotHas(items, 'Tout caché donné');
   });
+
+  // ── #30 ───────────────────────────────────────────────────────────────────
+  // Bug C-02 (audit) : Triple Pung compté deux fois quand 4 pungs dont 2 de la même famille
+  // Main : Pung caché[5B] × 2 + Pung[5R] + Pung[5C] + Paire[1B]
+  // Deux triplets possibles dans la triple boucle : (5B,5R,5C) et (5B',5R,5C) → sans guard, +32 pts
+  // Correction : flag `found` stoppe la boucle après la première détection.
+  // Les deux B5 sont cachés pour éviter Tout exposé. B5×2 dans cachéPungs → Deux Pungs cachés.
+  // Score → Sans honneurs +1 | Double Pung +4 | Deux Pungs cachés +2 | Tout Pung +6 | Triple Pung +16 = 29 pts
+  test('[Régression C-02] Triple Pung compté une seule fois avec 4 pungs de même valeur', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [B(5), B(5), B(5)], hidden: true  },
+        { type: 'pung', tiles: [B(5), B(5), B(5)], hidden: true  },
+        { type: 'pung', tiles: [R(5), R(5), R(5)], hidden: false },
+        { type: 'pung', tiles: [C(5), C(5), C(5)], hidden: false },
+      ],
+      pair:    { tiles: [B(1), B(1)], hidden: false },
+      winTile:  B(1),
+      winBy:   'discard',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(items.filter(i => i.name === 'Triple Pung').length).toBe(1);
+    expectHas(items, 'Triple Pung', 16);
+    expect(total).toBe(29);
+  });
+
+  // ── #31 ───────────────────────────────────────────────────────────────────
+  // Deux Kongs exposés exclut Kong exposé (+1) individuels (PDF p.14)
+  // Main : Kong exposé[3B] + Kong exposé[7R] + Chow[1C 2C 3C] + Chow caché[5C 6C 7C] + Paire[2R]
+  // Score → Une famille absente +1 | Deux Kongs exposés +4 = 5 pts → Main sans valeur non applicable
+  // (Total ≥ 5 pts mais structure non vide — on teste surtout les exclusions)
+  test('[Exclusion] Deux Kongs exposés exclut Kong exposé individuels', () => {
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const C = (v: number): Tile => makeTile('character', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'kong', tiles: [B(3), B(3), B(3), B(3)], hidden: false },
+        { type: 'kong', tiles: [R(7), R(7), R(7), R(7)], hidden: false },
+        { type: 'chow', tiles: [C(1), C(2), C(3)],       hidden: false },
+        { type: 'chow', tiles: [C(5), C(6), C(7)],       hidden: true  },
+      ],
+      pair:    { tiles: [R(2), R(2)], hidden: false },
+      winTile:  R(2),
+      winBy:   'discard',
+    });
+    const { items } = scoreHand(hand);
+    expectHas(items, 'Deux Kongs exposés', 4);
+    expectNotHas(items, 'Kong exposé (3B)');
+    expectNotHas(items, 'Kong exposé (7R)');
+  });
+
+  // ── #32 ───────────────────────────────────────────────────────────────────
+  // 2 Kongs cachés exclut Kong caché (+2) individuels (PDF p.20)
+  // Main : Kong caché[4C] + Kong caché[9B] + Chow[1R 2R 3R] + Chow[5R 6R 7R] + Paire[6C]
+  // Score → Sans honneurs +1 | 2 Kongs cachés +8 = 9 pts
+  test('[Exclusion] 2 Kongs cachés exclut Kong caché individuels', () => {
+    const C = (v: number): Tile => makeTile('character', v);
+    const B = (v: number): Tile => makeTile('bamboo', v);
+    const R = (v: number): Tile => makeTile('circle', v);
+    const hand = makeHand({
+      groups: [
+        { type: 'kong', tiles: [C(4), C(4), C(4), C(4)], hidden: true  },
+        { type: 'kong', tiles: [B(9), B(9), B(9), B(9)], hidden: true  },
+        { type: 'chow', tiles: [R(1), R(2), R(3)],       hidden: false },
+        { type: 'chow', tiles: [R(5), R(6), R(7)],       hidden: false },
+      ],
+      pair:    { tiles: [C(6), C(6)], hidden: false },
+      winTile:  C(6),
+      winBy:   'discard',
+    });
+    const { items } = scoreHand(hand);
+    expectHas(items, '2 Kongs cachés', 8);
+    expectNotHas(items, 'Kong caché (4C)');
+    expectNotHas(items, 'Kong caché (9B)');
+  });
+
+  // ── #33 ───────────────────────────────────────────────────────────────────
+  // Finir sur le Kong exclut Tirer soi-même (PDF p.20)
+  // Tout honneur et extrémité exclut Tout Pung, Extrémité ou honneur partout, Pung de Vent, Pung d'extrémité
+  // Main : Pung[Est] + Pung[1B] + Pung[9R] + Chow caché[1C 2C 3C] + Paire[Blanc]
+  // winBy = self, isAfterKong = true
+  // Score → Pung de Dragon (Blanc) +2 | Finir sur le Kong +8 = 10 pts
+  test('[Exclusion] Finir sur le Kong exclut Tirer soi-même', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('wind','E'),    makeTile('wind','E'),    makeTile('wind','E')   ], hidden: false },
+        { type: 'pung', tiles: [makeTile('bamboo',1),    makeTile('bamboo',1),    makeTile('bamboo',1)   ], hidden: false },
+        { type: 'pung', tiles: [makeTile('circle',9),    makeTile('circle',9),    makeTile('circle',9)   ], hidden: false },
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: true  },
+      ],
+      pair:        { tiles: [makeTile('dragon','W'), makeTile('dragon','W')], hidden: false },
+      winTile:     makeTile('dragon', 'W'),
+      winBy:       'self',
+      isAfterKong: true,
+    });
+    const { items } = scoreHand(hand);
+    expectHas(items, 'Finir sur le Kong', 8);
+    expectNotHas(items, 'Tirer soi-même');
+  });
+
+  // ── #34 ───────────────────────────────────────────────────────────────────
+  // Tout honneur et extrémité exclut : Tout Pung, Extrémité ou honneur partout,
+  // tous les Pung de Vent (1pt), tous les Pung d'extrémité (1pt)
+  // (Les combinaisons à 2pts : Pung de Dragon, Vent du tour/joueur, Deux Pungs cachés, restent cumulables)
+  // Main : Pung caché[Ouest] + Pung caché[Est] + Pung[1B] + Pung[Vert] + Paire[1C]
+  // windRound=Est, windPlayer=Est | écart (winTile=1C)
+  // 2 familles (bambou + caractère) → pas Semi pure, pas Tout Type
+  // cachéPungs = [Ouest, Est] (winT=1C ≠ wind) → Deux Pungs cachés
+  // Score → Une famille absente +1 | Pung de Dragon (Vert) +2 | Vent du tour (Est) +2
+  //          | Vent du joueur (Est) +2 | Deux Pungs cachés +2 | Tout honneur et extrémité +32 = 41 pts
+  test('[41 pts] Tout honneur et extrémité — exclusions Tout Pung, Pung de Vent, Pung d\'extrémité', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('wind','W'),   makeTile('wind','W'),   makeTile('wind','W')  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('wind','E'),   makeTile('wind','E'),   makeTile('wind','E')  ], hidden: true  },
+        { type: 'pung', tiles: [makeTile('bamboo',1),   makeTile('bamboo',1),   makeTile('bamboo',1)  ], hidden: false },
+        { type: 'pung', tiles: [makeTile('dragon','G'), makeTile('dragon','G'), makeTile('dragon','G') ], hidden: false },
+      ],
+      pair:       { tiles: [makeTile('character',1), makeTile('character',1)], hidden: false },
+      winTile:    makeTile('character', 1),
+      winBy:      'discard',
+      windRound:  'E',
+      windPlayer: 'E',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(41);
+    expectHas(items, 'Tout honneur et extrémité', 32);
+    expectHas(items, 'Pung de Dragon (Vert)',       2);
+    expectHas(items, 'Vent du tour (Est)',           2);
+    expectHas(items, 'Vent du joueur (Est)',         2);
+    expectHas(items, 'Deux Pungs cachés',            2);
+    expectHas(items, 'Une famille absente',          1);
+    expectNotHas(items, 'Tout Pung');
+    expectNotHas(items, 'Extrémité ou honneur partout');
+    expectNotHas(items, 'Pung de Vent (Ouest)');
+    expectNotHas(items, "Pung d'extrémité (1B)");
+  });
+
+  // ── #35 ───────────────────────────────────────────────────────────────────
+  // ventdestmahjong.fr main 113 : Symétrie exclut Une famille absente (PDF p.21)
+  // Main : Pung[2B] · Chow[2R 3R 4R] · Pung caché[9R] · Pung caché[8B] · Paire[Blanc]
+  // Toutes les tuiles ∈ { bambou 2/4/5/6/8/9, rond 1-6/9, Dragon Blanc } → Symétrie détectée
+  // Score → Pung d'extrémité (9R) +1 | Attente unique +1 | Deux Pungs cachés +2 | Symétrie +8 = 12 pts
+  test('[12 pts] Symétrie exclut Une famille absente — ventdestmahjong.fr #113', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'pung', tiles: [makeTile('bamboo',2), makeTile('bamboo',2), makeTile('bamboo',2)], hidden: false },
+        { type: 'chow', tiles: [makeTile('circle',2), makeTile('circle',3), makeTile('circle',4)], hidden: false },
+        { type: 'pung', tiles: [makeTile('circle',9), makeTile('circle',9), makeTile('circle',9)], hidden: true  },
+        { type: 'pung', tiles: [makeTile('bamboo',8), makeTile('bamboo',8), makeTile('bamboo',8)], hidden: true  },
+      ],
+      pair:      { tiles: [makeTile('dragon','W'), makeTile('dragon','W')], hidden: false },
+      winTile:   makeTile('dragon', 'W'),
+      winBy:     'discard',
+      waitType:  'pair',
+      windRound: 'E', windPlayer: 'E',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(12);
+    expectHas(items, 'Symétrie',                     8);
+    expectHas(items, 'Deux Pungs cachés',             2);
+    expectHas(items, "Pung d'extrémité (9R)",         1);
+    expectHas(items, 'Attente unique sur la paire',   1);
+    expectNotHas(items, 'Une famille absente');
+  });
+
+  // ── #36 ───────────────────────────────────────────────────────────────────
+  // ventdestmahjong.fr compte "Trois Chows superposés" pour cette main → ERREUR DU SITE
+  // PDF p.16 : "un de chaque famille, décalés d'un chiffre" → starts {4,6,7} ne sont pas
+  // consécutifs (écart 2 entre R4 et B6). PDF p.11 : "Tout Chow" exige "sans les honneurs"
+  // → paire Nord (vent) exclut "Tout Chow".
+  // Score correct : Double Chow +1 | Attente unique au bord +1 | Tout caché donné +2 = 4 pts
+  test('[4 pts] Trois Chows superposés absent — paire honneur + starts non consécutifs', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('circle',4),    makeTile('circle',5),    makeTile('circle',6)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('bamboo',6),    makeTile('bamboo',7),    makeTile('bamboo',8)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('bamboo',7),    makeTile('bamboo',8),    makeTile('bamboo',9)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('character',7), makeTile('character',8), makeTile('character',9)], hidden: true },
+      ],
+      pair:     { tiles: [makeTile('wind','N'), makeTile('wind','N')], hidden: false },
+      winTile:  makeTile('character', 7),
+      winBy:    'discard',
+      waitType: 'edge',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(4);
+    expectHas(items, 'Double Chow',              1);
+    expectHas(items, 'Attente unique au bord',   1);
+    expectHas(items, 'Tout caché donné',         2);
+    expectNotHas(items, 'Trois Chows superposés');
+    expectNotHas(items, 'Tout Chow');
+  });
+
+  // ── #37 ───────────────────────────────────────────────────────────────────
+  // ventdestmahjong.fr #51 (N°55/262)
+  // Chow caché [1C 2C 3C] · Chow caché [4R 5R 6R] · Chow caché [3B 4B 5B] · Chow caché [5C 6C 7C] · Paire [3B 3B]
+  // Tuile gagnante : 7C — [5C 6C 7C] gagné sur 7C = attente deux côtés (pas d'attente unique)
+  // Trois Chows superposés : Bambou(3)+Cercle(4)+Caractère(5) → starts {3,4,5} consécutifs, 3 familles → valide
+  // Tout Chow : paire [3B 3B] non-honneur → valide (PDF p.11)
+  // Score attendu : Tout caché donné +2 | Tout Chow +2 | Trois Chows superposés +6 = 10 pts
+  test('[10 pts] Trois Chows superposés + Tout Chow — ventdestmahjong.fr #51', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('character',1), makeTile('character',2), makeTile('character',3)], hidden: true },
+        { type: 'chow', tiles: [makeTile('circle',4),    makeTile('circle',5),    makeTile('circle',6)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('bamboo',3),    makeTile('bamboo',4),    makeTile('bamboo',5)   ], hidden: true },
+        { type: 'chow', tiles: [makeTile('character',5), makeTile('character',6), makeTile('character',7)], hidden: true },
+      ],
+      pair:     { tiles: [makeTile('bamboo',3), makeTile('bamboo',3)], hidden: false },
+      winTile:  makeTile('character', 7),
+      winBy:    'discard',
+      waitType: null,
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(10);
+    expectHas(items, 'Tout caché donné',        2);
+    expectHas(items, 'Tout Chow',               2);
+    expectHas(items, 'Trois Chows superposés',  6);
+  });
 });
