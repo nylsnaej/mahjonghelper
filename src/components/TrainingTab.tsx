@@ -8,12 +8,12 @@ import { handToText } from '../lib/handText';
 import type { Hand, ScoreResult } from '../types';
 
 const LEVEL_DESCS = [
-  'Mode Tout : niveaux 1-10 + suite serpentine',
+  'Mode Tout : niveaux 3-10 + suite serpentine',
   'Combinaisons à 1 pt : Double Chow, familles',
   'Combinaisons à 1-2 pts : Pungs, Dragons',
   'Combinaisons à 2-4 pts : Kongs, Vents du joueur',
   'Tout caché, Semi-pure (6 pts)',
-  'Grande suite, Triple Chow (8 pts)',
+  'Grande suite (8 pts)',
   'Main pure, 4 premiers/derniers — avec contexte',
   '7 paires, Grande suite pure (16-24 pts)',
   'Trois petits Dragons, Quatre petits Vents (64 pts)',
@@ -24,6 +24,20 @@ const LEVEL_DESCS = [
 
 interface Stats { played: number; correct: number; totalDiff: number; }
 
+const STATS_KEY = 'mahjong-stats';
+
+function loadStats(): Stats {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) return JSON.parse(raw) as Stats;
+  } catch { /* stockage indisponible */ }
+  return { played: 0, correct: 0, totalDiff: 0 };
+}
+
+function saveStats(s: Stats) {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch { /* stockage indisponible */ }
+}
+
 export function TrainingTab() {
   const [level, setLevel]           = useState(1);
   const [hand, setHand]             = useState<Hand | null>(null);
@@ -32,7 +46,7 @@ export function TrainingTab() {
   const [feedback, setFeedback]     = useState<{ text: string; cls: string } | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [validated, setValidated]   = useState(false);
-  const [stats, setStats]           = useState<Stats>({ played: 0, correct: 0, totalDiff: 0 });
+  const [stats, setStats]           = useState<Stats>(loadStats);
   const [copyLabel, setCopyLabel]   = useState('Copier');
 
   const startNewHand = useCallback((lvl: number) => {
@@ -62,7 +76,11 @@ export function TrainingTab() {
     const correct = score.total;
     const diff = Math.abs(userAns - correct);
 
-    setStats(s => ({ played: s.played + 1, correct: s.correct + (diff === 0 ? 1 : 0), totalDiff: s.totalDiff + diff }));
+    setStats(s => {
+      const next = { played: s.played + 1, correct: s.correct + (diff === 0 ? 1 : 0), totalDiff: s.totalDiff + diff };
+      saveStats(next);
+      return next;
+    });
 
     if (diff === 0)      setFeedback({ text: '✓ Exact ! ' + correct + ' points.', cls: 'feedback-correct' });
     else if (diff <= 2)  setFeedback({ text: 'Presque ! La réponse était ' + correct + ' pts (écart : ' + diff + ').', cls: 'feedback-close' });

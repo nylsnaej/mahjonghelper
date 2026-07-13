@@ -206,9 +206,10 @@ const GENERATORS = [
 ];
 
 export function generateHand(level: number): Hand {
-  // level 0 = mode "Tout" : pioche aléatoire parmi les 10 niveaux (10% chance serpentine)
+  // level 0 = mode "Tout" : pioche aléatoire parmi les niveaux 3-10 (10% chance serpentine).
+  // Niveaux 1 et 2 exclus du tirage : leur structure produit toujours < 8 pts.
   if (level === 0 && Math.random() < 0.1) return generateSnakeHand();
-  const effectiveLevel = level === 0 ? randInt(1, 10) : level;
+  const effectiveLevel = level === 0 ? randInt(3, 10) : level;
   const gen = GENERATORS[effectiveLevel];
   if (!gen) throw new Error('Invalid level: ' + level);
   for (let attempt = 0; attempt < 20; attempt++) {
