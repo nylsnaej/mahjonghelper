@@ -1203,4 +1203,34 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Petit serpentin', 12);
     expectNotHas(items, 'Tout caché donné');
   });
+
+  // ── #41 ───────────────────────────────────────────────────────────────────
+  // ventdestmahjong.fr main #148 (Deux Dragons dans une famille)
+  // Chow [1B 2B 3B] × 2 (exposé) · Chow caché [7B 8B 9B] × 2 · Paire [5B 5B]
+  // Tuile gagnante : 9B (bord, 7B-8B→9B) | écart adverse | Est/Est
+  // PDF p.47 : "Main pure avec deux Chows 123, deux Chows 789 et une paire de 5."
+  // Tout Chow / Double Chow pur / Deux Chows purs d'extrémité / Main pure → inclus par définition.
+  // Site : Deux Dragons dans une famille = 64 pts
+  test('[64 pts] Deux Dragons dans une famille — ventdestmahjong.fr #148', () => {
+    const hand = makeHand({
+      groups: [
+        { type: 'chow', tiles: [makeTile('bamboo',1), makeTile('bamboo',2), makeTile('bamboo',3)], hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',1), makeTile('bamboo',2), makeTile('bamboo',3)], hidden: false },
+        { type: 'chow', tiles: [makeTile('bamboo',7), makeTile('bamboo',8), makeTile('bamboo',9)], hidden: true  },
+        { type: 'chow', tiles: [makeTile('bamboo',7), makeTile('bamboo',8), makeTile('bamboo',9)], hidden: true  },
+      ],
+      pair:     { tiles: [makeTile('bamboo',5), makeTile('bamboo',5)], hidden: false },
+      winTile:  makeTile('bamboo', 9),
+      winBy:    'discard',
+      waitType: 'edge',
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(65); // 64 + 1 (attente au bord)
+    expectHas(items, 'Deux Dragons dans une famille', 64);
+    expectHas(items, 'Attente unique au bord', 1);
+    expectNotHas(items, 'Tout Chow');
+    expectNotHas(items, 'Double Chow pur');
+    expectNotHas(items, "Deux Chows purs d'extrémité");
+    expectNotHas(items, 'Main pure');
+  });
 });

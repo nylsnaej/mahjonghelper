@@ -583,7 +583,7 @@ function score12to24pt(ctx: ScoreCtx, add: Adder): void {
 }
 
 function score32to88pt(ctx: ScoreCtx, add: Adder): void {
-  const { hand, groups, pair, chows, pungs, kongs } = ctx;
+  const { hand, groups, pair, chows, pungs, kongs, families, hasHonors } = ctx;
 
   // ─── 32 POINTS ───
 
@@ -653,7 +653,17 @@ function score32to88pt(ctx: ScoreCtx, add: Adder): void {
     if (handT.every(t => isTerminal(t))) add('Tout extrémité', 64);
   }
 
-  if (hand.specialType === 'two_dragons_1f') add('Deux Dragons dans une famille', 64);
+  // PDF p.47 — Deux Dragons dans une famille : 2×[1-2-3] + 2×[7-8-9] + paire 5, pure
+  {
+    for (const fam of ['bamboo', 'circle', 'character'] as const) {
+      const famChows = chows.filter(g => g.tiles[0]?.type === fam);
+      const count1 = famChows.filter(g => chowStart(g) === 1).length;
+      const count7 = famChows.filter(g => chowStart(g) === 7).length;
+      const pairIsFam5 = pair.tiles[0]?.type === fam && pair.tiles[0]?.value === 5 && pair.tiles.length === 2;
+      if (count1 === 2 && count7 === 2 && pairIsFam5 && families.size === 1 && !hasHonors)
+        add('Deux Dragons dans une famille', 64);
+    }
+  }
 
   // ─── 88 POINTS ───
 
@@ -878,6 +888,12 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   // PDF p.26 — Petit serpentin : « Inclus la combinaison « tout caché donné » »
   // PDF p.34 — Grand serpentin : « Les points pour « Tout caché donné » sont inclus. »
   if (has('Petit serpentin') || has('Grand serpentin')) rm('Tout caché donné');
+
+  // PDF p.47 — Deux Dragons dans une famille
+  // → « Les points pour Tout Chow, Double Chow, 2 Chow d'extrémité, Main pure sont inclus par définition. »
+  if (has('Deux Dragons dans une famille')) {
+    rm('Tout Chow'); rm('Double Chow pur'); rm("Deux Chows purs d'extrémité"); rm('Main pure');
+  }
 
   // PDF p.51 — Trois grands Dragons
   // → « Les points pour « Pung de Dragon » sont inclus, par définition. »
