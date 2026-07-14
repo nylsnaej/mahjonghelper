@@ -1,10 +1,10 @@
-import { tilesEqual } from './tiles';
+import { makeTile, tilesEqual } from './tiles';
 import { scoreHand } from './combinations';
 import type { Tile, Hand, WaitType, SuitType } from '../types';
 
 // ── Types exportés ────────────────────────────────────────────────────────────
 
-export type CalcMode = 'standard' | '7pairs' | 'snake';
+export type CalcMode = 'standard' | '7pairs' | 'snake' | 'petit-grand';
 
 export interface SlotGroup { tiles: Tile[]; hidden: boolean; }
 
@@ -184,4 +184,72 @@ export function buildHand(state: BuildState, ctx: GameCtx): BuildResult {
   };
   const { items, total } = scoreHand(hand);
   return { ok: true, hand, items, total };
+}
+
+// ── Petit / Grand serpentin ───────────────────────────────────────────────────
+
+/** Les 9 tuiles serpentines de base (1-4-7 Bambou, 2-5-8 Rond, 3-6-9 Caractère). */
+export const SERPENTINE_TILES: Tile[] = [
+  makeTile('bamboo', 1), makeTile('bamboo', 4), makeTile('bamboo', 7),
+  makeTile('circle', 2), makeTile('circle', 5), makeTile('circle', 8),
+  makeTile('character', 3), makeTile('character', 6), makeTile('character', 9),
+];
+
+/** Les 7 honneurs (4 Vents + 3 Dragons). */
+export const HONOR_TILES: Tile[] = [
+  makeTile('wind', 'E'), makeTile('wind', 'S'), makeTile('wind', 'W'), makeTile('wind', 'N'),
+  makeTile('dragon', 'R'), makeTile('dragon', 'G'), makeTile('dragon', 'W'),
+];
+
+/** Clé unique pour chaque tuile dans la sélection petit/grand serpentin. */
+export function tileToKey(t: Tile): string { return `${t.type}:${t.value}`; }
+
+/**
+ * Construit et score une main Petit/Grand serpentin à partir d'un ensemble
+ * de tuiles sélectionnées parmi les 16 de la base serpentine.
+ *
+ * Cas valides (total = 14) :
+ *  - 9 serpentines + 5 honneurs → Suite serpentine + Petit serpentin (24 pts)
+ *  - 8 serpentines + 6 honneurs → Petit serpentin (12 pts)
+ *  - 7 serpentines + 7 honneurs → Grand serpentin (24 pts)
+ */
+export function buildPetitGrandHand(
+  selected: ReadonlySet<string>,
+  flowers: Tile[],
+  ctx: GameCtx,
+): BuildResult {
+  const serpCount = SERPENTINE_TILES.filter(t => selected.has(tileToKey(t))).length;
+  const honCount  = HONOR_TILES.filter(t => selected.has(tileToKey(t))).length;
+  const total     = serpCount + honCount;
+
+  if (total < 14)
+    return { ok: false, error: `Sélectionne 14 tuiles — actuellement : ${total}/14.` };
+  if (total > 14)
+    return { ok: false, error: `Trop de tuiles sélectionnées (${total}/14).` };
+
+  type ST = import('../types').SpecialType;
+  let specialType: ST;
+  if      (serpCount === 9 && honCount === 5) specialType = 'suite_small_snake';
+  else if (serpCount === 8 && honCount === 6) specialType = 'small_snake';
+  else if (serpCount === 7 && honCount === 7) specialType = 'big_snake';
+  else return { ok: false, error: `Combinaison invalide : ${serpCount} serpentines + ${honCount} honneurs. Valide : 9+5, 8+6 ou 7+7.` };
+
+  const hand: Hand = {
+    groups:  [],
+    pair:    { tiles: [], hidden: true },
+    flowers,
+    winTile: null,
+    winBy:   ctx.winBy,
+    waitType: null,
+    windRound:    ctx.windRound,
+    windPlayer:   ctx.windPlayer,
+    isLastTile:   ctx.isLastTile,
+    isLastDiscard: ctx.isLastDiscard,
+    isStolenKong: false,
+    isAfterKong:  false,
+    isLastExisting: ctx.isLastExisting,
+    specialType,
+  };
+  const { items, total: scored } = scoreHand(hand);
+  return { ok: true, hand, items, total: scored };
 }

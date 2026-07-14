@@ -652,3 +652,117 @@ footer {
   /* Copier texte */
   #hand-text, .hand-text-area { font-size: 0.72rem; }
 }
+
+/* ── Petit / Grand serpentin ───────────────────────────────────────────────── */
+
+#petit-grand-section {
+  padding: 8px 0;
+}
+
+.pg-intro {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.pg-cases {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.pg-group {
+  margin-bottom: 14px;
+}
+
+.pg-group-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #bbb;
+  margin-bottom: 6px;
+}
+
+.pg-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pg-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48px;
+  padding: 6px 4px;
+  border: 2px solid #3a3a3a;
+  border-radius: 6px;
+  background: #1e1e1e;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.pg-tile:hover {
+  border-color: #666;
+  background: #2a2a2a;
+}
+
+.pg-tile.pg-selected {
+  border-color: #f0c040;
+  background: #2a2500;
+}
+
+.pg-tile .tile-symbol {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.pg-lbl {
+  font-size: 0.65rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.pg-tile.pg-selected .pg-lbl {
+  color: #f0c040;
+}
+
+.pg-status {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin: 4px 0 12px;
+}
+
+.pg-combo-ok {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.pg-combo-err {
+  color: #e57373;
+}
+
+.pg-flowers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pg-flowers-label {
+  font-size: 0.85rem;
+  color: #bbb;
+}
+
+.pg-flowers-count {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Couleur des tuiles serpentines par famille */
+.pg-tile.bamboo  .tile-symbol { color: #5fa85f; }
+.pg-tile.circle  .tile-symbol { color: #4a9edd; }
+.pg-tile.character .tile-symbol { color: #d44; }
+.pg-tile.wind    .tile-symbol { color: #e8c84a; }
+.pg-tile.dragon  .tile-symbol { color: #e8c84a; }

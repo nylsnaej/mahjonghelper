@@ -1183,4 +1183,24 @@ describe('Mains validées par expert', () => {
     expectHas(items, 'Une famille absente',  1);
     expectNotHas(items, 'Tirer soi-même');
   });
+
+  // ── #40 ───────────────────────────────────────────────────────────────────
+  // ventdestmahjong.fr main #28 (Petit serpentin)
+  // 1B,4B,7B (serpentines) + E,S,N,W,Blanc,Vert (6 honneurs) + 3C,6C,9C (serpentines) + 2R,5R (serpentines)
+  // = 8 tuiles serpentines + 6 honneurs → Petit serpentin (12 pts)
+  // specialType = 'small_snake', winBy = 'discard'
+  // Site : Petit serpentin = 12 pts
+  test('[12 pts] Petit serpentin (8 serpentines + 6 honneurs)', () => {
+    const hand = makeHand({
+      groups: [],
+      pair: { tiles: [], hidden: true },
+      specialType: 'small_snake',
+      winBy: 'discard',
+      waitType: null,
+    });
+    const { items, total } = scoreHand(hand);
+    expect(total).toBe(12);
+    expectHas(items, 'Petit serpentin', 12);
+    expectNotHas(items, 'Tout caché donné');
+  });
 });

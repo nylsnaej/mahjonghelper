@@ -2,7 +2,7 @@ import { useReducer, useState } from 'react';
 import { makeTile, tileSymbol, tileLabel, tilesEqual } from '../lib/tiles';
 import { getComboRef } from '../lib/combinations';
 import { handToText } from '../lib/handText';
-import { detectType, buildHand } from '../lib/handBuilder';
+import { detectType, buildHand, buildPetitGrandHand, SERPENTINE_TILES, HONOR_TILES, tileToKey } from '../lib/handBuilder';
 import type { CalcMode, SlotGroup, GameCtx, BuildResult } from '../lib/handBuilder';
 import type { Tile, SuitType } from '../types';
 
@@ -41,8 +41,9 @@ function makeSnakeGroups(suits: [SuitType, SuitType, SuitType]): SlotGroup[] {
 }
 
 function makeGroups(mode: CalcMode, snakeSuits?: [SuitType, SuitType, SuitType]): SlotGroup[] {
-  if (mode === '7pairs') return Array.from({ length: 7 }, () => ({ tiles: [], hidden: false }));
-  if (mode === 'snake') return [...makeSnakeGroups(snakeSuits!), { tiles: [], hidden: false }];
+  if (mode === '7pairs')      return Array.from({ length: 7 }, () => ({ tiles: [], hidden: false }));
+  if (mode === 'snake')       return [...makeSnakeGroups(snakeSuits!), { tiles: [], hidden: false }];
+  if (mode === 'petit-grand') return [];
   return Array.from({ length: 4 }, () => ({ tiles: [], hidden: false }));
 }
 
@@ -61,8 +62,9 @@ function isGroupComplete(state: CalcState, slotId: string): boolean {
 }
 
 function slotOrder(mode: CalcMode): string[] {
-  if (mode === '7pairs') return ['g0','g1','g2','g3','g4','g5','g6'];
-  if (mode === 'snake')  return ['g3','pair','flower'];
+  if (mode === '7pairs')      return ['g0','g1','g2','g3','g4','g5','g6'];
+  if (mode === 'snake')       return ['g3','pair','flower'];
+  if (mode === 'petit-grand') return ['flower'];
   return ['g0','g1','g2','g3','pair','flower'];
 }
 
@@ -220,9 +222,29 @@ export function CalculatorTab() {
   const [ctx, setCtx]     = useState<GameCtx>(initCtx);
   const [result, setResult] = useState<BuildResult | null>(null);
   const [copyLabel, setCopyLabel] = useState('Copier');
+  const [pgSel, setPgSel] = useState<ReadonlySet<string>>(new Set<string>());
 
-  const is7pairs = state.mode === '7pairs';
-  const isSnake  = state.mode === 'snake';
+  const is7pairs    = state.mode === '7pairs';
+  const isSnake     = state.mode === 'snake';
+  const isPetitGrand = state.mode === 'petit-grand';
+
+  // Dérivés pour le mode Petit/Grand serpentin
+  const pgSerpCount = SERPENTINE_TILES.filter(t => pgSel.has(tileToKey(t))).length;
+  const pgHonCount  = HONOR_TILES.filter(t => pgSel.has(tileToKey(t))).length;
+  const pgTotal     = pgSerpCount + pgHonCount;
+  const pgComboLabel =
+    pgTotal === 14 && pgSerpCount === 9 && pgHonCount === 5 ? 'Suite serpentine + Petit serpentin (24 pts)' :
+    pgTotal === 14 && pgSerpCount === 8 && pgHonCount === 6 ? 'Petit serpentin (12 pts)' :
+    pgTotal === 14 && pgSerpCount === 7 && pgHonCount === 7 ? 'Grand serpentin (24 pts)' :
+    null;
+
+  function togglePg(key: string) {
+    setPgSel(prev => {
+      const s = new Set(prev);
+      s.has(key) ? s.delete(key) : s.add(key);
+      return s;
+    });
+  }
 
 
   function usageCount(tile: Tile): number {
@@ -234,19 +256,25 @@ export function CalculatorTab() {
   }
 
   function calculateScore() {
-    setResult(buildHand(state, ctx));
+    if (isPetitGrand) {
+      setResult(buildPetitGrandHand(pgSel, state.flowers, ctx));
+    } else {
+      setResult(buildHand(state, ctx));
+    }
   }
 
   function reset() {
     dispatch({ type: 'RESET' });
     setCtx(initCtx());
     setResult(null);
+    setPgSel(new Set());
   }
 
   function switchMode(mode: CalcMode) {
     dispatch({ type: 'SET_MODE', mode });
     setCtx(initCtx());
     setResult(null);
+    setPgSel(new Set());
   }
 
   const optionKeys: Array<[string, keyof GameCtx]> = [
@@ -302,7 +330,7 @@ export function CalculatorTab() {
       </section>
 
       {/* ── Palette ── */}
-      <section id="calc-palette-section">
+      {!isPetitGrand && <section id="calc-palette-section">
         <h2>Palette <span id="palette-hint">(cliquer pour ajouter au groupe actif)</span></h2>
         <div id="tile-palette">
           {[
@@ -335,7 +363,7 @@ export function CalculatorTab() {
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
       {/* ── Constructeur ── */}
       <section id="calc-hand-section">
@@ -343,12 +371,72 @@ export function CalculatorTab() {
 
         {/* Toggle mode */}
         <div id="calc-mode-row">
-          <button className={'mode-btn' + (!is7pairs && !isSnake ? ' active' : '')} onClick={() => switchMode('standard')}>Standard</button>
+          <button className={'mode-btn' + (!is7pairs && !isSnake && !isPetitGrand ? ' active' : '')} onClick={() => switchMode('standard')}>Standard</button>
           <button className={'mode-btn' + ( is7pairs ? ' active' : '')} onClick={() => switchMode('7pairs')}>7 Paires</button>
           <button className={'mode-btn' + ( isSnake  ? ' active' : '')} onClick={() => switchMode('snake')}>Serpentine</button>
+          <button className={'mode-btn' + ( isPetitGrand ? ' active' : '')} onClick={() => switchMode('petit-grand')}>Pt/Gd Serp.</button>
         </div>
 
-        <div id="hand-builder">
+        {/* ── Mode Petit / Grand serpentin ── */}
+        {isPetitGrand && (
+          <div id="petit-grand-section">
+            <p className="pg-intro">
+              Sélectionne 14 tuiles parmi les 16 de la base serpentine.<br/>
+              <span className="pg-cases">9+5 = Suite + Petit (24 pts) · 8+6 = Petit (12 pts) · 7+7 = Grand (24 pts)</span>
+            </p>
+
+            <div className="pg-group">
+              <div className="pg-group-label">Tuiles serpentines ({pgSerpCount}/9)</div>
+              <div className="pg-tiles">
+                {SERPENTINE_TILES.map(t => {
+                  const key = tileToKey(t);
+                  const sel = pgSel.has(key);
+                  return (
+                    <button key={key} className={`pg-tile ${t.type}${sel ? ' pg-selected' : ''}`} onClick={() => togglePg(key)}>
+                      <span className="tile-symbol">{tileSymbol(t)}</span>
+                      <span className="pg-lbl">{tileLabel(t)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pg-group">
+              <div className="pg-group-label">Honneurs ({pgHonCount}/7)</div>
+              <div className="pg-tiles">
+                {HONOR_TILES.map(t => {
+                  const key = tileToKey(t);
+                  const sel = pgSel.has(key);
+                  return (
+                    <button key={key} className={`pg-tile ${t.type}${sel ? ' pg-selected' : ''}`} onClick={() => togglePg(key)}>
+                      <span className="tile-symbol">{tileSymbol(t)}</span>
+                      <span className="pg-lbl">{tileLabel(t)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pg-status">
+              {pgTotal}/14 tuiles
+              {pgComboLabel ? <span className="pg-combo-ok"> → {pgComboLabel}</span>
+                            : pgTotal === 14 ? <span className="pg-combo-err"> → combinaison invalide</span>
+                            : null}
+            </div>
+
+            {/* Fleurs */}
+            <div className="pg-flowers">
+              <span className="pg-flowers-label">Fleurs :</span>
+              <button className="slot-btn" disabled={state.flowers.length === 0}
+                onClick={() => dispatch({ type: 'REMOVE_LAST', slotId: 'flower' })}>⌫</button>
+              <span className="pg-flowers-count">{state.flowers.length}</span>
+              <button className="slot-btn" disabled={state.flowers.length >= 8}
+                onClick={() => dispatch({ type: 'ADD_TILE', tileType: 'flower', value: state.flowers.length + 1 })}>+</button>
+            </div>
+          </div>
+        )}
+
+        <div id="hand-builder" style={isPetitGrand ? { display: 'none' } : undefined}>
           {/* Section serpentine : sélection des familles */}
           {isSnake && (
             <div id="snake-suits-section">
@@ -471,8 +559,8 @@ export function CalculatorTab() {
           })()}
         </div>
 
-        {/* Attente — masquée en 7 paires (pas d'attente unique applicable) */}
-        {!is7pairs && (
+        {/* Attente — masquée en 7 paires et Petit/Grand serpentin */}
+        {!is7pairs && !isPetitGrand && (
           <div id="wait-row">
             {isSnake && <p style={{ fontSize:'0.8rem', color:'#888', margin:'0 0 4px' }}>Attente sur le 4e groupe ou la paire uniquement</p>}
             <label htmlFor="wait-type">Attente unique :</label>

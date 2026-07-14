@@ -9,7 +9,7 @@ export interface Tile {
 export type GroupType = 'chow' | 'pung' | 'kong' | 'pair7' | 'snake';
 export type SpecialType =
   | '13orphans' | '7pairs' | '7pairs_consec' | '9gates'
-  | 'snake' | 'small_snake' | 'big_snake'
+  | 'snake' | 'small_snake' | 'big_snake' | 'suite_small_snake'
   | 'two_dragons_3f' | 'two_dragons_1f'
   | 'chicken';
 

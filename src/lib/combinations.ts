@@ -263,7 +263,9 @@ function score2to4pt(ctx: ScoreCtx, add: Adder): void {
   {
     const allHidden = groups.every(g => g.hidden);
     if (allHidden && hand.winBy === 'discard' &&
-        hand.specialType !== '7pairs' && hand.specialType !== '7pairs_consec')
+        hand.specialType !== '7pairs' && hand.specialType !== '7pairs_consec' &&
+        hand.specialType !== 'small_snake' && hand.specialType !== 'big_snake' &&
+        hand.specialType !== 'suite_small_snake')
       add('Tout caché donné', 2);
   }
 
@@ -461,7 +463,6 @@ function score12to24pt(ctx: ScoreCtx, add: Adder): void {
   // ─── 12 POINTS ───
 
   if (hand.specialType === 'snake')       add('Suite serpentine', 12);
-  if (hand.specialType === 'small_snake') add('Petit serpentin', 12);
 
   {
     const handT = groups.flatMap(g => g.tiles).concat(pair.tiles);
@@ -535,7 +536,6 @@ function score12to24pt(ctx: ScoreCtx, add: Adder): void {
 
   // ─── 24 POINTS ───
 
-  if (hand.specialType === 'big_snake') add('Grand serpentin', 24);
   if (families.size === 1 && !hasHonors) add('Main pure', 24);
 
   {
@@ -694,6 +694,16 @@ export function scoreHand(hand: Hand): ScoreResult {
     if (hand.waitType === 'pair')       add('Attente unique sur la paire', 1);
     if (hand.waitType === 'edge')       add('Attente unique au bord', 1);
     if (hand.waitType === 'closed')     add('Attente unique au milieu', 1);
+    hand.flowers.forEach(() => add('Fleur', 1));
+    return { items: results, total: results.reduce((s, r) => s + r.pts, 0) };
+  }
+
+  // PDF p.26 + p.34 — Petit/Grand serpentin : mains sans groupes réels.
+  // Retour anticipé pour éviter la "vacuous truth" des conditions `handT.every(...)` sur tableau vide.
+  if (hand.specialType === 'small_snake' || hand.specialType === 'big_snake' || hand.specialType === 'suite_small_snake') {
+    if (hand.specialType === 'suite_small_snake') { add('Suite serpentine', 12); add('Petit serpentin', 12); }
+    else if (hand.specialType === 'small_snake')  add('Petit serpentin', 12);
+    else                                           add('Grand serpentin', 24);
     hand.flowers.forEach(() => add('Fleur', 1));
     return { items: results, total: results.reduce((s, r) => s + r.pts, 0) };
   }
@@ -864,6 +874,10 @@ function applyExclusions(items: ScoreItem[]): ScoreItem[] {
   // PDF p.48 — Sept paires pures consécutives
   // → « Les points pour « Main pure », « Sept paires », « Tout caché donné » sont inclus. »
   if (has('Sept paires pures consécutives')) { rm('Main pure'); rm('Sept paires'); rm('Tout caché donné'); }
+
+  // PDF p.26 — Petit serpentin : « Inclus la combinaison « tout caché donné » »
+  // PDF p.34 — Grand serpentin : « Les points pour « Tout caché donné » sont inclus. »
+  if (has('Petit serpentin') || has('Grand serpentin')) rm('Tout caché donné');
 
   // PDF p.51 — Trois grands Dragons
   // → « Les points pour « Pung de Dragon » sont inclus, par définition. »
